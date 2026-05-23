@@ -1,0 +1,9 @@
+flask
+pyjwt
+bcrypt
+python-dotenv
+gspread
+oauth2client
+pytest
+requests
+flask-cors
