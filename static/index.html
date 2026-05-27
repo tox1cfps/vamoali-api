@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VamoAli 🍽️</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+  <main id="authPage" class="page auth-page active">
+    <section class="auth-shell">
+      <aside class="auth-hero" aria-hidden="true">
+        <div class="auth-hero__brand">VamoAli 🍽️</div>
+        <p class="auth-hero__tagline">Seus próximos lugares favoritos, a dois.</p>
+
+        <div class="emoji-grid">
+          <div class="emoji-grid__item emoji-grid__item--1">🍕</div>
+          <div class="emoji-grid__item emoji-grid__item--2">🍣</div>
+          <div class="emoji-grid__item emoji-grid__item--3">🍷</div>
+          <div class="emoji-grid__item emoji-grid__item--4">🍜</div>
+        </div>
+      </aside>
+
+      <section class="auth-panel">
+        <div class="auth-panel__inner">
+          <div class="auth-brand-mobile">VamoAli 🍽️</div>
+
+          <div class="auth-tabs" role="tablist" aria-label="Autenticação">
+            <button type="button" class="auth-tab active" data-tab="login" onclick="switchTab('login')">Login</button>
+            <button type="button" class="auth-tab" data-tab="register" onclick="switchTab('register')">Cadastro</button>
+          </div>
+
+          <form id="loginForm" class="auth-form active" novalidate>
+            <div class="field-group">
+              <label class="field-label" for="loginEmail">Email</label>
+              <input class="field-input" type="email" id="loginEmail" name="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+              <span class="field-error" id="loginEmailError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="loginPassword">Senha</label>
+              <input class="field-input" type="password" id="loginPassword" name="password" placeholder="Sua senha" autocomplete="current-password" required>
+              <span class="field-error" id="loginPasswordError"></span>
+            </div>
+
+            <div class="form-error" id="loginFormError" aria-live="polite">
+              <span class="form-error__icon">⚠️</span>
+              <span class="form-error__text"></span>
+            </div>
+
+            <button type="submit" class="primary-button">
+              <span>Entrar</span>
+              <span class="primary-button__arrow">→</span>
+            </button>
+          </form>
+
+          <form id="registerForm" class="auth-form" novalidate>
+            <div class="field-group">
+              <label class="field-label" for="registerUsername">Nome de usuário</label>
+              <input class="field-input" type="text" id="registerUsername" name="username" placeholder="Seu nome" autocomplete="username" required>
+              <span class="field-error" id="registerUsernameError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="registerEmail">Email</label>
+              <input class="field-input" type="email" id="registerEmail" name="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+              <span class="field-error" id="registerEmailError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="registerPassword">Senha</label>
+              <input class="field-input" type="password" id="registerPassword" name="password" placeholder="Crie uma senha" autocomplete="new-password" required>
+              <span class="field-error" id="registerPasswordError"></span>
+            </div>
+
+            <div class="form-error" id="registerFormError" aria-live="polite">
+              <span class="form-error__icon">⚠️</span>
+              <span class="form-error__text"></span>
+            </div>
+
+            <button type="submit" class="primary-button">
+              <span>Cadastrar</span>
+              <span class="primary-button__arrow">→</span>
+            </button>
+          </form>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <main id="placesPage" class="page places-page">
+    <nav class="navbar">
+      <div class="navbar__inner">
+        <div class="navbar__brand">VamoAli 🍽️</div>
+        <div class="navbar__center" aria-hidden="true"></div>
+        <div class="navbar__user">
+          <div class="navbar__avatar" id="navbarAvatar">V</div>
+          <span class="navbar__username" id="navbarUserText"></span>
+          <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema">☀️</button>
+          <button type="button" class="logout-button" onclick="logout()">Sair</button>
+        </div>
+      </div>
+    </nav>
+
+    <section class="places-shell">
+      <header class="places-header">
+        <h1>Nossos lugares 🍽️</h1>
+      </header>
+
+      <div id="placesGrid" class="places-grid" aria-live="polite">
+        <section id="emptyState" class="empty-state" style="display: none;">
+          <div class="empty-state__card">
+            <div class="empty-state__icon" aria-hidden="true">🗺️</div>
+            <h2>Nenhum lugar ainda</h2>
+            <p>Adicione o primeiro lugar que vocês querem visitar juntos</p>
+            <button type="button" class="primary-button primary-button--compact" onclick="openAddPlaceModal()">Adicionar primeiro lugar</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <div class="fab-shell">
+      <button type="button" class="fab" onclick="openAddPlaceModal()" aria-label="Adicionar lugar">+</button>
+      <span class="fab-label">Adicionar lugar</span>
+    </div>
+  </main>
+
+  <div id="addPlaceModal" class="modal" onclick="if(event.target===this) closeModal('addPlaceModal')">
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="addPlaceTitle">
+      <div class="modal__header">
+        <div class="modal__emoji">🗺️</div>
+        <div>
+          <h2 id="addPlaceTitle">Adicionar lugar</h2>
+          <p>Salve um novo destino para o casal.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('addPlaceModal')" aria-label="Fechar">✕</button>
+      </div>
+
+      <form id="addPlaceForm" class="modal-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="placeName">Nome do lugar</label>
+          <input class="field-input" type="text" id="placeName" name="name" placeholder="Ex.: Bistrô do Centro" required>
+          <span class="field-error" id="addPlaceNameError"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="placeMapsUrl">Link do Google Maps</label>
+          <input class="field-input" type="url" id="placeMapsUrl" name="maps_url" placeholder="https://maps.google.com/..." required>
+          <span class="field-error" id="addPlaceMapsError"></span>
+        </div>
+
+        <div class="form-error" id="addPlaceFormError" aria-live="polite">
+          <span class="form-error__icon">⚠️</span>
+          <span class="form-error__text"></span>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" onclick="closeModal('addPlaceModal')">Cancelar</button>
+          <button type="submit" class="primary-button">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="feedbackModal" class="modal" onclick="if(event.target===this) closeModal('feedbackModal')">
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+      <div class="modal__header">
+        <div class="modal__emoji">💬</div>
+        <div>
+          <h2 id="feedbackTitle">Adicionar feedback</h2>
+          <p>Registre a opinião de vocês sobre o lugar.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('feedbackModal')" aria-label="Fechar">✕</button>
+      </div>
+
+      <form id="feedbackForm" class="modal-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="feedbackText">Feedback</label>
+          <textarea class="field-input field-input--textarea" id="feedbackText" name="feedback" placeholder="Conte como foi a experiência" required></textarea>
+          <span class="field-error" id="feedbackTextError"></span>
+        </div>
+
+        <div class="form-error" id="feedbackFormError" aria-live="polite">
+          <span class="form-error__icon">⚠️</span>
+          <span class="form-error__text"></span>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" onclick="closeModal('feedbackModal')">Cancelar</button>
+          <button type="submit" class="primary-button">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=10"></script>
+</body>
+</html>
