@@ -25,7 +25,7 @@ def create_place():
         return jsonify({"success": False, "message": "Body JSON é obrigatório"}), 400
 
     try:
-        result = place_service.create_place(user_id, body.get("name"), body.get("maps_url"))
+        result = place_service.create_place(user_id, body.get("name"), body.get("maps_url"), body.get("photo_url", ""))
         return jsonify(result), 201
     except ValueError as e:
         return jsonify({"success":False, "message": str(e)}), 400

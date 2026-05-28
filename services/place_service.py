@@ -8,11 +8,11 @@ class PlaceService:
         return self.place_repo.find_all_by_user(user_id)
 
 
-    def create_place(self, user_id, name, maps_url):
+    def create_place(self, user_id, name, maps_url, photo_url=""):
         if not name:
             raise ValueError("O nome do lugar é obrigatório")
         
-        return self.place_repo.create_place(user_id, name, maps_url)
+        return self.place_repo.create_place(user_id, name, maps_url, photo_url)
     
     def delete_place(self, user_id, place_id):
         place = self.place_repo.find_by_id(place_id)

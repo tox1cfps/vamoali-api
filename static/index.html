@@ -97,9 +97,32 @@
         <div class="navbar__brand">VamoAli 🍽️</div>
         <div class="navbar__center" aria-hidden="true"></div>
         <div class="navbar__user">
-          <div class="navbar__avatar" id="navbarAvatar">V</div>
+          <div class="navbar__avatar" id="navbarAvatar" onclick="toggleMobileDropdown()">V</div>
           <span class="navbar__username" id="navbarUserText"></span>
-          <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema">☀️</button>
+          <div class="navbar__dropdown" id="navbarDropdown">
+            <div class="navbar__dropdown-user" id="dropdownUserName"></div>
+            <button type="button" class="navbar__dropdown-logout" onclick="logout()">Sair</button>
+          </div>
+          <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema">
+            <span class="theme-toggle__track">
+              <span class="theme-toggle__circle">
+                <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+              </span>
+            </span>
+          </button>
           <button type="button" class="logout-button" onclick="logout()">Sair</button>
         </div>
       </div>
@@ -108,15 +131,20 @@
     <section class="places-shell">
       <header class="places-header">
         <h1>Nossos lugares 🍽️</h1>
+        <div class="places-filter" id="placesFilter">
+          <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">Todos</button>
+          <button class="filter-btn" data-filter="pending" onclick="setFilter('pending')">Para visitar</button>
+          <button class="filter-btn" data-filter="visited" onclick="setFilter('visited')">Já visitamos</button>
+        </div>
       </header>
 
       <div id="placesGrid" class="places-grid" aria-live="polite">
         <section id="emptyState" class="empty-state" style="display: none;">
           <div class="empty-state__card">
-            <div class="empty-state__icon" aria-hidden="true">🗺️</div>
-            <h2>Nenhum lugar ainda</h2>
-            <p>Adicione o primeiro lugar que vocês querem visitar juntos</p>
-            <button type="button" class="primary-button primary-button--compact" onclick="openAddPlaceModal()">Adicionar primeiro lugar</button>
+            <div class="empty-state__icon" aria-hidden="true">�</div>
+            <h2>Nenhum lugar ainda 💕</h2>
+            <p>Adicionem o primeiro lugar que vocês querem visitar juntos!</p>
+            <button type="button" class="primary-button primary-button--compact" onclick="openAddPlaceModal()">Adicionar primeiro lugar ✨</button>
           </div>
         </section>
       </div>
@@ -150,6 +178,12 @@
           <label class="field-label" for="placeMapsUrl">Link do Google Maps</label>
           <input class="field-input" type="url" id="placeMapsUrl" name="maps_url" placeholder="https://maps.google.com/..." required>
           <span class="field-error" id="addPlaceMapsError"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="placePhotoUrl">Foto do lugar <span style="font-weight:400;color:#8b867b;">(opcional)</span></label>
+          <input class="field-input" type="url" id="placePhotoUrl" name="photo_url" placeholder="https://link-da-foto.com/imagem.jpg">
+          <span class="field-error" id="addPlacePhotoError"></span>
         </div>
 
         <div class="form-error" id="addPlaceFormError" aria-live="polite">
@@ -195,6 +229,8 @@
       </form>
     </div>
   </div>
+
+  <div id="toastContainer" class="toast-container"></div>
 
   <script src="app.js?v=10"></script>
 </body>

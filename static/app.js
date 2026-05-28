@@ -6,6 +6,7 @@ let currentUser = null;
 let currentToken = null;
 let places = [];
 let currentFeedbackPlaceId = null;
+let currentFilter = 'all';
 const visitedOverrides = new Map();
 const visitedRequestTokens = new Map();
 let visitedRequestCounter = 0;
@@ -85,9 +86,34 @@ function syncUserHeader() {
 
   const userText = document.getElementById('navbarUserText');
   const avatar = document.getElementById('navbarAvatar');
+  const dropdownUserName = document.getElementById('dropdownUserName');
 
   if (userText) userText.textContent = username;
   if (avatar) avatar.textContent = avatarText;
+  if (dropdownUserName) dropdownUserName.textContent = username;
+}
+
+function toggleMobileDropdown() {
+  const dropdown = document.getElementById('navbarDropdown');
+  if (!dropdown) return;
+  dropdown.classList.toggle('active');
+  
+  if (dropdown.classList.contains('active')) {
+    document.addEventListener('click', closeMobileDropdownOnClickOutside);
+  } else {
+    document.removeEventListener('click', closeMobileDropdownOnClickOutside);
+  }
+}
+
+function closeMobileDropdownOnClickOutside(event) {
+  const dropdown = document.getElementById('navbarDropdown');
+  const avatar = document.getElementById('navbarAvatar');
+  
+  if (!dropdown || !avatar) return;
+  if (dropdown.contains(event.target) || avatar.contains(event.target)) return;
+  
+  dropdown.classList.remove('active');
+  document.removeEventListener('click', closeMobileDropdownOnClickOutside);
 }
 
 // ===== AUTH =====
@@ -228,10 +254,11 @@ async function loadPlaces() {
 
 async function handleAddPlace(event) {
   event.preventDefault();
-  clearFormErrors(['addPlaceNameError', 'addPlaceMapsError', 'addPlaceFormError']);
+  clearFormErrors(['addPlaceNameError', 'addPlaceMapsError', 'addPlacePhotoError', 'addPlaceFormError']);
 
   const name = document.getElementById('placeName').value.trim();
   const mapsUrl = document.getElementById('placeMapsUrl').value.trim();
+  const photoUrl = (document.getElementById('placePhotoUrl') && document.getElementById('placePhotoUrl').value) ? document.getElementById('placePhotoUrl').value.trim() : '';
 
   if (!name) {
     showFieldError('addPlaceNameError', 'Informe o nome do lugar.');
@@ -253,6 +280,7 @@ async function handleAddPlace(event) {
     user_id: currentUser?.id,
     name,
     maps_url: mapsUrl,
+    photo_url: photoUrl,
     visited: false,
     feedback: ''
   };
@@ -270,7 +298,7 @@ async function handleAddPlace(event) {
         Authorization: `Bearer ${currentToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ name, maps_url: mapsUrl })
+      body: JSON.stringify({ name, maps_url: mapsUrl, photo_url: photoUrl })
     });
 
     const data = await safeJson(response);
@@ -278,16 +306,17 @@ async function handleAddPlace(event) {
     if (!response.ok) {
       places = places.filter((place) => place.id !== tempId);
       renderPlaces();
-      showError('addPlaceFormError', data.message || 'Erro ao adicionar lugar.');
+      showToast(data.message || 'Erro ao adicionar lugar.', 'error');
       return;
     }
 
     places = places.map((place) => (place.id === tempId ? data : place));
     renderPlaces();
+    showToast('Lugar adicionado com sucesso!', 'success');
   } catch (error) {
     places = places.filter((place) => place.id !== tempId);
     renderPlaces();
-    showError('addPlaceFormError', 'Erro ao adicionar lugar.');
+    showToast('Erro ao adicionar lugar.', 'error');
   }
 }
 
@@ -317,7 +346,7 @@ async function markAsVisited(placeId, button) {
 
     if (!response.ok) {
       const data = await safeJson(response);
-      alert(data.message || 'Erro ao marcar como visitado.');
+      showToast(data.message || 'Erro ao marcar como visitado.', 'error');
       if (visitedRequestTokens.get(String(placeId)) !== requestId) return;
       visitedOverrides.delete(String(placeId));
       place.visited = previousVisited;
@@ -326,8 +355,9 @@ async function markAsVisited(placeId, button) {
     }
     if (visitedRequestTokens.get(String(placeId)) !== requestId) return;
     visitedOverrides.delete(String(placeId));
+    showToast(nextVisited ? 'Marcado como visitado!' : 'Removido da lista de visitados.', 'success');
   } catch (error) {
-    alert('Erro ao marcar como visitado.');
+    showToast('Erro ao marcar como visitado.', 'error');
     if (visitedRequestTokens.get(String(placeId)) !== requestId) return;
     visitedOverrides.delete(String(placeId));
     place.visited = previousVisited;
@@ -381,12 +411,14 @@ async function deletePlace(placeId, button) {
 
     if (!response.ok) {
       const data = await safeJson(response);
-      alert(data.message || 'Erro ao deletar lugar.');
+      showToast(data.message || 'Erro ao deletar lugar.', 'error');
       places = previousPlaces;
       renderPlaces();
+    } else {
+      showToast('Lugar deletado com sucesso!', 'success');
     }
   } catch (error) {
-    alert('Erro ao deletar lugar.');
+    showToast('Erro ao deletar lugar.', 'error');
     places = previousPlaces;
     renderPlaces();
   }
@@ -442,12 +474,24 @@ async function handleAddFeedback(event) {
     document.getElementById('feedbackForm').reset();
     closeModal('feedbackModal');
     await loadPlaces();
+    showToast('Feedback adicionado com sucesso!', 'success');
   } catch (error) {
     showError('feedbackFormError', 'Erro ao salvar feedback.');
   }
 }
 
 // ===== RENDERING =====
+function setFilter(filter) {
+  currentFilter = filter;
+  
+  // Update button active states
+  document.querySelectorAll('.filter-btn').forEach((btn) => {
+    btn.classList.toggle('filter-btn--active', btn.dataset.filter === filter);
+  });
+  
+  renderPlaces();
+}
+
 function renderPlaces() {
   const grid = document.getElementById('placesGrid');
   const emptyState = document.getElementById('emptyState');
@@ -467,39 +511,110 @@ function renderPlaces() {
     emptyState.style.display = 'none';
   }
 
-  grid.innerHTML = places.map((place) => {
-    const safeId = escapeJs(String(place.id ?? ''));
-    const name = escapeHtml(place.name ?? 'Lugar sem nome');
-    const mapsUrl = escapeAttr(place.maps_url ?? '#');
-    const override = visitedOverrides.get(String(place.id ?? safeId));
-    const isVisited = typeof override === 'boolean' ? override : normalizeVisited(place.visited);
-    const badgeClass = isVisited ? 'place-card__badge--visited' : 'place-card__badge--pending';
-    const badgeText = isVisited ? '✅ Visitado' : '📍 Na lista';
-    const feedback = place.feedback ? `<p class="place-card__feedback">"${escapeHtml(place.feedback)}"</p>` : '';
-    const color = hashColor(String(place.name ?? place.id ?? 'V'));
-    const feedbackDisabled = !isVisited ? 'disabled aria-disabled="true"' : '';
-    const visitedLabel = isVisited ? 'Visitado ✓' : '✓ Visitei';
-    const visitedClass = isVisited ? 'is-visited' : '';
+  // Separate and sort places
+  const pending = places
+    .filter(p => !normalizeVisited(p.visited))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  
+  const visited = places
+    .filter(p => normalizeVisited(p.visited))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
-    return `
-      <article class="place-card" data-id="${safeId}">
-        <div class="place-card__emoji" aria-hidden="true" style="background:${color};">${String((place.name||'')[0]||'V').toUpperCase()}</div>
-        <div class="place-card__body">
-          <h3 class="place-card__name">${name}</h3>
-          <div class="place-card__meta">
-            <span class="place-card__badge ${badgeClass}">${badgeText}</span>
-            <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
-          </div>
-          ${feedback}
+  // Filter based on current filter
+  let sectionsToShow = [];
+  
+  if (currentFilter === 'all') {
+    if (pending.length > 0) sectionsToShow.push({ title: '📍 Para visitar', count: pending.length, places: pending });
+    if (visited.length > 0) sectionsToShow.push({ title: '✅ Já visitamos', count: visited.length, places: visited });
+  } else if (currentFilter === 'pending') {
+    if (pending.length > 0) sectionsToShow.push({ title: '📍 Para visitar', count: pending.length, places: pending });
+  } else if (currentFilter === 'visited') {
+    if (visited.length > 0) sectionsToShow.push({ title: '✅ Já visitamos', count: visited.length, places: visited });
+  }
+
+  if (!sectionsToShow.length) {
+    grid.innerHTML = '';
+    if (emptyState) {
+      grid.appendChild(emptyState);
+      emptyState.style.display = 'grid';
+    }
+    return;
+  }
+
+  grid.innerHTML = sectionsToShow
+    .map(section => {
+      const cardsHtml = section.places
+        .map(place => renderPlaceCard(place))
+        .join('');
+      
+      return `
+        <div class="places-section">
+          <header class="places-section-header">${section.title} (${section.count})</header>
+          ${cardsHtml}
         </div>
-        <div class="place-card__actions">
-          <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
-          <button type="button" class="action-button action-button--feedback" ${feedbackDisabled} onclick="openFeedbackModal('${safeId}')" title="Feedback">Feedback</button>
-          <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Deletar">Excluir</button>
+      `;
+    })
+    .join('');
+}
+
+function renderPlaceCard(place) {
+  const safeId = escapeJs(String(place.id ?? ''));
+  const name = escapeHtml(place.name ?? 'Lugar sem nome');
+  const mapsUrl = escapeAttr(place.maps_url ?? '#');
+  const photoRaw = place.photo_url ?? '';
+  const photoUrl = photoRaw ? escapeAttr(photoRaw) : '';
+  const override = visitedOverrides.get(String(place.id ?? safeId));
+  const isVisited = typeof override === 'boolean' ? override : normalizeVisited(place.visited);
+  const badgeClass = isVisited ? 'place-card__badge--visited' : 'place-card__badge--pending';
+  const badgeText = isVisited ? '✅ Visitado' : '📍 Na lista';
+  const feedback = place.feedback ? `<p class="place-card__feedback">"${escapeHtml(place.feedback)}"</p>` : '';
+  const color = hashColor(String(place.name ?? place.id ?? 'V'));
+  const feedbackDisabledAttr = !isVisited ? 'disabled aria-disabled="true" title="Marque como visitado primeiro"' : 'title="Feedback"';
+  const visitedLabel = isVisited ? 'Visitado ✓' : '✓ Visitei';
+  const visitedClass = isVisited ? 'is-visited' : '';
+
+  if (photoUrl) {
+    return `
+      <article class="place-card place-card--with-photo" data-id="${safeId}">
+        <img class="place-card__photo" src="${photoUrl}" alt="${name}" onerror="this.style.display='none';this.closest('.place-card').classList.remove('place-card--with-photo')">
+        <div class="place-card__row">
+          <div class="place-card__emoji" aria-hidden="true" style="background:${color};">${String((place.name||'')[0]||'V').toUpperCase()}</div>
+          <div class="place-card__body">
+            <h3 class="place-card__name">${name}</h3>
+            <div class="place-card__meta">
+              <span class="place-card__badge ${badgeClass}">${badgeText}</span>
+              <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
+            </div>
+            ${feedback}
+          </div>
+          <div class="place-card__actions">
+            <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
+            <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">💬</button>
+            <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">🗑</button>
+          </div>
         </div>
       </article>
     `;
-  }).join('');
+  }
+
+  return `
+    <article class="place-card" data-id="${safeId}">
+      <div class="place-card__emoji" aria-hidden="true" style="background:${color};">${String((place.name||'')[0]||'V').toUpperCase()}</div>
+      <div class="place-card__body">
+        <h3 class="place-card__name">${name}</h3>
+        <div class="place-card__meta">
+          <span class="place-card__badge ${badgeClass}">${badgeText}</span>
+          <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
+        </div>
+        ${feedback}
+      </div>
+      <div class="place-card__actions">
+        <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
+        <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">💬</button>
+        <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">🗑</button>
+      </div>
+    </article>
+  `;
 }
 
 function showPlacesEmptyFallback() {
@@ -533,7 +648,6 @@ function applyTheme(theme) {
 
   const toggle = document.getElementById('themeToggle');
   if (toggle) {
-    toggle.textContent = isDark ? '🌙' : '☀️';
     toggle.setAttribute('aria-label', isDark ? 'Ativar modo claro' : 'Ativar modo escuro');
   }
 }
@@ -541,6 +655,32 @@ function applyTheme(theme) {
 function toggleTheme() {
   const isDark = document.body.classList.contains('dark-mode');
   applyTheme(isDark ? 'light' : 'dark');
+}
+
+// ===== TOAST =====
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast--${type}`;
+  toast.textContent = message;
+
+  container.appendChild(toast);
+
+  const toastCount = container.querySelectorAll('.toast:not(.exiting)').length;
+  if (toastCount > 3) {
+    const oldestToast = container.querySelector('.toast:not(.exiting)');
+    if (oldestToast) {
+      oldestToast.classList.add('exiting');
+      setTimeout(() => oldestToast.remove(), 300);
+    }
+  }
+
+  setTimeout(() => {
+    toast.classList.add('exiting');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // ===== MODALS =====
