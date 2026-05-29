@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VamoAli 🍽️ - Login</title>
+  <link rel="icon" type="image/svg+xml" href="plate-svgrepo-com.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=10">
+</head>
+<body>
+  <main id="authPage" class="page auth-page active">
+    <section class="auth-shell">
+      <aside class="auth-hero" aria-hidden="true">
+        <div class="auth-hero__brand">
+          <img class="brand-logo" src="restaurant-plate-svgrepo-com.svg" alt="VamoAli">
+          <span>VamoAli</span>
+        </div>
+        <p class="auth-hero__tagline">Seus próximos lugares favoritos, a dois.</p>
+
+        <div class="emoji-grid">
+          <div class="emoji-grid__item emoji-grid__item--1">🍕</div>
+          <div class="emoji-grid__item emoji-grid__item--2">🍣</div>
+          <div class="emoji-grid__item emoji-grid__item--3">🍷</div>
+          <div class="emoji-grid__item emoji-grid__item--4">🍜</div>
+        </div>
+      </aside>
+
+      <section class="auth-panel">
+        <div class="auth-panel__inner">
+          <div class="auth-brand-mobile">
+            <img class="brand-logo" src="restaurant-plate-svgrepo-com.svg" alt="VamoAli">
+            <span>VamoAli</span>
+          </div>
+
+          <div class="auth-tabs" role="tablist" aria-label="Autenticação">
+            <button type="button" class="auth-tab active" data-tab="login" onclick="switchTab('login')">Login</button>
+            <button type="button" class="auth-tab" data-tab="register" onclick="switchTab('register')">Cadastro</button>
+          </div>
+
+          <form id="loginForm" class="auth-form active" action="javascript:void(0);" novalidate>
+            <div class="field-group">
+              <label class="field-label" for="loginEmail">Email</label>
+              <input class="field-input" type="email" id="loginEmail" name="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+              <span class="field-error" id="loginEmailError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="loginPassword">Senha</label>
+              <input class="field-input" type="password" id="loginPassword" name="password" placeholder="Sua senha" autocomplete="current-password" required>
+              <span class="field-error" id="loginPasswordError"></span>
+            </div>
+
+            <div class="form-error" id="loginFormError" aria-live="polite">
+              <span class="form-error__icon">⚠️</span>
+              <span class="form-error__text"></span>
+            </div>
+
+            <button type="submit" class="primary-button">
+              <span>Entrar</span>
+              <span class="primary-button__arrow">→</span>
+            </button>
+          </form>
+
+          <form id="registerForm" class="auth-form" action="javascript:void(0);" novalidate>
+            <div class="field-group">
+              <label class="field-label" for="registerUsername">Nome de usuário</label>
+              <input class="field-input" type="text" id="registerUsername" name="username" placeholder="Seu nome" autocomplete="username" required>
+              <span class="field-error" id="registerUsernameError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="registerEmail">Email</label>
+              <input class="field-input" type="email" id="registerEmail" name="email" placeholder="voce@exemplo.com" autocomplete="email" required>
+              <span class="field-error" id="registerEmailError"></span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="registerPassword">Senha</label>
+              <input class="field-input" type="password" id="registerPassword" name="password" placeholder="Crie uma senha" autocomplete="new-password" required>
+              <span class="field-error" id="registerPasswordError"></span>
+            </div>
+
+            <div class="form-error" id="registerFormError" aria-live="polite">
+              <span class="form-error__icon">⚠️</span>
+              <span class="form-error__text"></span>
+            </div>
+
+            <button type="submit" class="primary-button">
+              <span>Cadastrar</span>
+              <span class="primary-button__arrow">→</span>
+            </button>
+          </form>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema" style="position: fixed; top: 20px; right: 20px; z-index: 100;">
+    <span class="theme-toggle__track">
+      <span class="theme-toggle__circle">
+        <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </span>
+    </span>
+  </button>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js?v=10"></script>
+</body>
+</html>

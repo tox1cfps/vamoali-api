@@ -19,7 +19,6 @@ function init() {
   bindEvents();
   applyStoredTheme();
   restoreSession();
-  switchTab('login');
 }
 
 function handleSearch(event) {
@@ -48,14 +47,14 @@ function restoreSession() {
   const user = localStorage.getItem('user');
 
   if (!token || !user) {
-    showAuthPage();
+    window.location.href = 'auth.html';
     return;
   }
 
   try {
     currentToken = token;
     currentUser = JSON.parse(user);
-    showPlacesPage();
+    syncUserHeader();
     loadPlaces();
   } catch (error) {
     logout();
@@ -63,16 +62,6 @@ function restoreSession() {
 }
 
 // ===== NAVIGATION =====
-function showAuthPage() {
-  document.getElementById('authPage')?.classList.add('active');
-  document.getElementById('placesPage')?.classList.remove('active');
-}
-
-function showPlacesPage() {
-  document.getElementById('authPage')?.classList.remove('active');
-  document.getElementById('placesPage')?.classList.add('active');
-  syncUserHeader();
-}
 
 function switchTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((button) => {
@@ -162,8 +151,7 @@ async function handleLogin(event) {
     localStorage.setItem('user', JSON.stringify(currentUser));
 
     document.getElementById('loginForm').reset();
-    showPlacesPage();
-    await loadPlaces();
+    window.location.href = 'places.html';
   } catch (error) {
     showError('loginFormError', 'Erro de conexão com a API.');
   }
@@ -212,8 +200,7 @@ async function handleRegister(event) {
     localStorage.setItem('user', JSON.stringify(currentUser));
 
     document.getElementById('registerForm').reset();
-    showPlacesPage();
-    await loadPlaces();
+    window.location.href = 'places.html';
   } catch (error) {
     showError('registerFormError', 'Erro de conexão com a API.');
   }
@@ -228,13 +215,7 @@ function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
 
-  document.getElementById('loginForm')?.reset();
-  document.getElementById('registerForm')?.reset();
-  hideModal('addPlaceModal');
-  hideModal('feedbackModal');
-  clearAllAuthErrors();
-  showAuthPage();
-  switchTab('login');
+  window.location.href = 'auth.html';
 }
 
 // ===== PLACES =====
@@ -605,8 +586,12 @@ function renderPlaceCard(place) {
           </div>
           <div class="place-card__actions">
             <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
-            <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">💬</button>
-            <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">🗑</button>
+            <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
+              <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
+            </button>
+            <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">
+              <img class="action-icon action-icon--delete icon-tint-dark" src="garbage-trash-svgrepo-com.svg" alt="">
+            </button>
           </div>
         </div>
       </article>
@@ -627,8 +612,12 @@ function renderPlaceCard(place) {
       </div>
       <div class="place-card__actions">
         <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
-        <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">💬</button>
-        <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">🗑</button>
+        <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
+          <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
+        </button>
+        <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">
+          <img class="action-icon action-icon--delete icon-tint-dark" src="garbage-trash-svgrepo-com.svg" alt="">
+        </button>
       </div>
     </article>
   `;

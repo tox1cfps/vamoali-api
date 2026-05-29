@@ -106,10 +106,23 @@ svg {
 }
 
 .auth-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-size: clamp(2.8rem, 5vw, 4.4rem);
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.05em;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+}
+
+.navbar__brand .brand-logo {
+  width: 24px;
+  height: 24px;
 }
 
 .auth-hero__tagline {
@@ -167,6 +180,8 @@ svg {
 
 .auth-brand-mobile {
   display: none;
+  align-items: center;
+  gap: 10px;
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -352,12 +367,29 @@ svg {
 }
 
 .navbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.08rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   white-space: nowrap;
   color: #1a1a2e;
   justify-self: start;
+}
+
+.action-icon {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+body.dark-mode .action-icon--feedback {
+  filter: brightness(0) invert(95%);
+}
+
+body.dark-mode .action-icon--delete {
+  filter: brightness(0) invert(95%);
 }
 
 .navbar__search {
@@ -372,13 +404,9 @@ svg {
 .navbar__search-icon {
   position: absolute;
   left: 12px;
-  font-size: 13px;
+  width: 14px;
+  height: 14px;
   pointer-events: none;
-  color: #6f6b61;
-}
-
-body.dark-mode .navbar__search-icon {
-  color: rgba(255,255,255,0.4);
 }
 
 .navbar__search-input {
@@ -930,6 +958,10 @@ body.dark-mode .place-card__category {
   transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+body.dark-mode .icon-tint-dark {
+  filter: brightness(0) invert(95%);
+}
+
 .action-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
@@ -1361,7 +1393,7 @@ body.dark-mode .place-card--with-photo {
   }
 
   .auth-brand-mobile {
-    display: block;
+    display: inline-flex;
   }
 
   .navbar__inner,
