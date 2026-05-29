@@ -338,17 +338,17 @@ svg {
   position: sticky;
   top: 0;
   z-index: 20;
-  height: 64px;
+  height: 56px;
   background: #ffffff;
   border-bottom: 1px solid var(--line);
 }
 
 .navbar__inner {
   height: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
-  gap: 20px;
-  padding: 0 60px;
+  padding: 0 24px;
 }
 
 .navbar__brand {
@@ -357,17 +357,81 @@ svg {
   letter-spacing: -0.03em;
   white-space: nowrap;
   color: #1a1a2e;
+  justify-self: start;
 }
 
-.navbar__center {
-  flex: 1;
+.navbar__search {
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.navbar__search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  pointer-events: none;
+  color: #6f6b61;
+}
+
+body.dark-mode .navbar__search-icon {
+  color: rgba(255,255,255,0.4);
+}
+
+.navbar__search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 16px 0 38px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  background: #f5f5f5;
+  color: #1a1a2e;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.navbar__search-input:hover {
+  background: #eeeeee;
+  border-color: #d0d0d0;
+}
+
+.navbar__search-input:focus {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.12);
+  background: #ffffff;
+}
+
+.navbar__search-input::placeholder {
+  color: #a3a09a;
+}
+
+body.dark-mode .navbar__search-input {
+  background: #1e1e30;
+  border-color: rgba(255,255,255,0.25);
+  color: #f0f0ff;
+  border-radius: 8px;
+}
+
+body.dark-mode .navbar__search-input:hover {
+  background: #252538;
+  border-color: rgba(255,255,255,0.35);
+}
+
+body.dark-mode .navbar__search-input:focus {
+  border-color: var(--coral);
+  background: #252538;
+  box-shadow: 0 0 0 3px rgba(255, 107, 74, 0.15);
 }
 
 .navbar__user {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: auto;
+  justify-self: end;
   position: relative;
 }
 
@@ -661,48 +725,51 @@ body.dark-mode .theme-toggle__moon {
   color: #1a1a2e;
 }
 
-.places-filter {
+.places-tabs {
   display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 20px;
+  max-width: 720px;
+  margin: 0 auto 20px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.filter-btn {
-  padding: 8px 16px;
-  border-radius: 999px;
+.places-tab {
+  flex: 1;
+  padding: 12px 0;
   background: transparent;
-  border: 1px solid #e0e0e0;
+  border: none;
+  border-bottom: 2px solid transparent;
   color: #6f6b61;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease, border-color 0.2s ease;
+  margin-bottom: -1px;
 }
 
-.filter-btn:hover {
-  background: rgba(17, 17, 17, 0.04);
+.places-tab:hover {
+  color: #1a1a2e;
 }
 
-.filter-btn--active {
-  background: #111111;
-  color: #ffffff;
-  border-color: #111111;
+.places-tab--active {
+  color: #1a1a2e;
+  border-bottom-color: var(--coral);
 }
 
-body.dark-mode .filter-btn {
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.6);
+body.dark-mode .places-tabs {
+  border-bottom-color: rgba(255,255,255,0.1);
 }
 
-body.dark-mode .filter-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+body.dark-mode .places-tab {
+  color: rgba(255,255,255,0.5);
 }
 
-body.dark-mode .filter-btn--active {
-  background: var(--coral);
-  color: #ffffff;
-  border-color: var(--coral);
+body.dark-mode .places-tab:hover {
+  color: #f0f0ff;
+}
+
+body.dark-mode .places-tab--active {
+  color: #f0f0ff;
+  border-bottom-color: var(--coral);
 }
 
 .places-section-header {
@@ -775,6 +842,16 @@ body.dark-mode .places-section-header {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.place-card__category {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+body.dark-mode .place-card__category {
+  color: rgba(255,255,255,0.5);
 }
 
 .place-card__name {

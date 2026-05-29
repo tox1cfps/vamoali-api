@@ -7,6 +7,7 @@ let currentToken = null;
 let places = [];
 let currentFeedbackPlaceId = null;
 let currentFilter = 'all';
+let currentSearch = '';
 const visitedOverrides = new Map();
 const visitedRequestTokens = new Map();
 let visitedRequestCounter = 0;
@@ -21,12 +22,19 @@ function init() {
   switchTab('login');
 }
 
+function handleSearch(event) {
+  currentSearch = event.target.value.trim().toLowerCase();
+  renderPlaces();
+}
+
 function bindEvents() {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const addPlaceForm = document.getElementById('addPlaceForm');
   const feedbackForm = document.getElementById('feedbackForm');
   const themeToggle = document.getElementById('themeToggle');
+  const searchInput = document.getElementById('navbarSearch');
+  if (searchInput) searchInput.addEventListener('input', handleSearch);
 
   if (loginForm) loginForm.addEventListener('submit', handleLogin);
   if (registerForm) registerForm.addEventListener('submit', handleRegister);
@@ -259,6 +267,7 @@ async function handleAddPlace(event) {
   const name = document.getElementById('placeName').value.trim();
   const mapsUrl = document.getElementById('placeMapsUrl').value.trim();
   const photoUrl = (document.getElementById('placePhotoUrl') && document.getElementById('placePhotoUrl').value) ? document.getElementById('placePhotoUrl').value.trim() : '';
+  const category = document.getElementById('placeCategory')?.value || '';
 
   if (!name) {
     showFieldError('addPlaceNameError', 'Informe o nome do lugar.');
@@ -282,7 +291,8 @@ async function handleAddPlace(event) {
     maps_url: mapsUrl,
     photo_url: photoUrl,
     visited: false,
-    feedback: ''
+    feedback: '',
+    category: category
   };
 
   places = [optimisticPlace, ...places];
@@ -298,7 +308,7 @@ async function handleAddPlace(event) {
         Authorization: `Bearer ${currentToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ name, maps_url: mapsUrl, photo_url: photoUrl })
+      body: JSON.stringify({ name, maps_url: mapsUrl, photo_url: photoUrl, category })
     });
 
     const data = await safeJson(response);
@@ -483,12 +493,9 @@ async function handleAddFeedback(event) {
 // ===== RENDERING =====
 function setFilter(filter) {
   currentFilter = filter;
-  
-  // Update button active states
-  document.querySelectorAll('.filter-btn').forEach((btn) => {
-    btn.classList.toggle('filter-btn--active', btn.dataset.filter === filter);
+  document.querySelectorAll('.places-tab').forEach((btn) => {
+    btn.classList.toggle('places-tab--active', btn.dataset.filter === filter);
   });
-  
   renderPlaces();
 }
 
@@ -512,12 +519,19 @@ function renderPlaces() {
   }
 
   // Separate and sort places
+  const matchesSearch = (place) => {
+    if (!currentSearch) return true;
+    const name = (place.name || '').toLowerCase();
+    const category = (place.category || '').toLowerCase();
+    return name.includes(currentSearch) || category.includes(currentSearch);
+  };
+
   const pending = places
-    .filter(p => !normalizeVisited(p.visited))
+    .filter(p => !normalizeVisited(p.visited) && matchesSearch(p))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
   
   const visited = places
-    .filter(p => normalizeVisited(p.visited))
+    .filter(p => normalizeVisited(p.visited) && matchesSearch(p))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   // Filter based on current filter
@@ -572,6 +586,7 @@ function renderPlaceCard(place) {
   const feedbackDisabledAttr = !isVisited ? 'disabled aria-disabled="true" title="Marque como visitado primeiro"' : 'title="Feedback"';
   const visitedLabel = isVisited ? 'Visitado ✓' : '✓ Visitei';
   const visitedClass = isVisited ? 'is-visited' : '';
+  const categoryBadge = place.category ? `<span class="place-card__category">${escapeHtml(place.category)}</span>` : '';
 
   if (photoUrl) {
     return `
@@ -581,6 +596,7 @@ function renderPlaceCard(place) {
           <div class="place-card__emoji" aria-hidden="true" style="background:${color};">${String((place.name||'')[0]||'V').toUpperCase()}</div>
           <div class="place-card__body">
             <h3 class="place-card__name">${name}</h3>
+            ${categoryBadge}
             <div class="place-card__meta">
               <span class="place-card__badge ${badgeClass}">${badgeText}</span>
               <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
@@ -602,6 +618,7 @@ function renderPlaceCard(place) {
       <div class="place-card__emoji" aria-hidden="true" style="background:${color};">${String((place.name||'')[0]||'V').toUpperCase()}</div>
       <div class="place-card__body">
         <h3 class="place-card__name">${name}</h3>
+        ${categoryBadge}
         <div class="place-card__meta">
           <span class="place-card__badge ${badgeClass}">${badgeText}</span>
           <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>

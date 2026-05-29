@@ -33,7 +33,7 @@
             <button type="button" class="auth-tab" data-tab="register" onclick="switchTab('register')">Cadastro</button>
           </div>
 
-          <form id="loginForm" class="auth-form active" novalidate>
+          <form id="loginForm" class="auth-form active" action="javascript:void(0);" novalidate>
             <div class="field-group">
               <label class="field-label" for="loginEmail">Email</label>
               <input class="field-input" type="email" id="loginEmail" name="email" placeholder="voce@exemplo.com" autocomplete="email" required>
@@ -57,7 +57,7 @@
             </button>
           </form>
 
-          <form id="registerForm" class="auth-form" novalidate>
+          <form id="registerForm" class="auth-form" action="javascript:void(0);" novalidate>
             <div class="field-group">
               <label class="field-label" for="registerUsername">Nome de usuário</label>
               <input class="field-input" type="text" id="registerUsername" name="username" placeholder="Seu nome" autocomplete="username" required>
@@ -95,7 +95,10 @@
     <nav class="navbar">
       <div class="navbar__inner">
         <div class="navbar__brand">VamoAli 🍽️</div>
-        <div class="navbar__center" aria-hidden="true"></div>
+        <div class="navbar__search">
+          <span class="navbar__search-icon">🔍</span>
+          <input type="text" class="navbar__search-input" id="navbarSearch" placeholder="Buscar por nome ou categoria..." autocomplete="off">
+        </div>
         <div class="navbar__user">
           <div class="navbar__avatar" id="navbarAvatar" onclick="toggleMobileDropdown()">V</div>
           <span class="navbar__username" id="navbarUserText"></span>
@@ -131,12 +134,13 @@
     <section class="places-shell">
       <header class="places-header">
         <h1>Nossos lugares 🍽️</h1>
-        <div class="places-filter" id="placesFilter">
-          <button class="filter-btn filter-btn--active" data-filter="all" onclick="setFilter('all')">Todos</button>
-          <button class="filter-btn" data-filter="pending" onclick="setFilter('pending')">Para visitar</button>
-          <button class="filter-btn" data-filter="visited" onclick="setFilter('visited')">Já visitamos</button>
-        </div>
       </header>
+
+      <div class="places-tabs" id="placesTabs">
+        <button class="places-tab places-tab--active" data-filter="all" onclick="setFilter('all')">Todos</button>
+        <button class="places-tab" data-filter="pending" onclick="setFilter('pending')">Para visitar</button>
+        <button class="places-tab" data-filter="visited" onclick="setFilter('visited')">Já visitamos</button>
+      </div>
 
       <div id="placesGrid" class="places-grid" aria-live="polite">
         <section id="emptyState" class="empty-state" style="display: none;">
@@ -178,6 +182,21 @@
           <label class="field-label" for="placeMapsUrl">Link do Google Maps</label>
           <input class="field-input" type="url" id="placeMapsUrl" name="maps_url" placeholder="https://maps.google.com/..." required>
           <span class="field-error" id="addPlaceMapsError"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="placeCategory">Categoria <span style="font-weight:400;color:#8b867b;">(opcional)</span></label>
+          <select class="field-input" id="placeCategory" name="category">
+            <option value="">Selecione uma categoria</option>
+            <option value="Restaurante">🍽️ Restaurante</option>
+            <option value="Café">☕ Café</option>
+            <option value="Bar">🍺 Bar</option>
+            <option value="Lazer">🎭 Lazer</option>
+            <option value="Compras">🛍️ Compras</option>
+            <option value="Ao ar livre">🌳 Ao ar livre</option>
+            <option value="Cinema">🎬 Cinema/Teatro</option>
+            <option value="Outro">📍 Outro</option>
+          </select>
         </div>
 
         <div class="field-group">
