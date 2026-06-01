@@ -59,9 +59,6 @@
         <div>
           <h1>Nossos lugares 🍽️</h1>
         </div>
-        <div class="places-header__actions">
-          <button type="button" class="secondary-button" onclick="pickRandomPlace()">Sortear lugar</button>
-        </div>
       </header>
 
       <div class="places-tabs" id="placesTabs">
@@ -83,8 +80,15 @@
     </section>
 
     <div class="fab-shell">
-      <button type="button" class="fab" onclick="openAddPlaceModal()" aria-label="Adicionar lugar">+</button>
-      <span class="fab-label">Adicionar lugar</span>
+      <div class="fab-item ">
+        <button type="button" class="fab" onclick="openAddPlaceModal()" aria-label="Adicionar lugar">+</button>
+        <span class="fab-label">Adicionar lugar</span>
+      </div>
+      <div class="fab-item">
+        <button type="button" class="fab" onclick="pickRandomPlace()" aria-label="Sortear Lugar"><img src="diamond-svgrepo-com.svg" alt="" style="width:24px;height:24px;filter:brightness(0) invert(1);vertical-align:middle;margin-right:6px;"></button>
+        <span class="fab-label">Sortear um Lugar</span>
+      </div>
+     
     </div>
   </main>
 
