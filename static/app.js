@@ -8,7 +8,9 @@ let places = [];
 let currentFeedbackPlaceId = null;
 let currentFilter = 'all';
 let currentSearch = '';
+let currentResetToken = null;
 const visitedOverrides = new Map();
+const favoriteOverrides = new Map();
 const visitedRequestTokens = new Map();
 let visitedRequestCounter = 0;
 
@@ -31,6 +33,8 @@ function bindEvents() {
   const registerForm = document.getElementById('registerForm');
   const addPlaceForm = document.getElementById('addPlaceForm');
   const feedbackForm = document.getElementById('feedbackForm');
+  const resetPasswordRequestForm = document.getElementById('resetPasswordRequestForm');
+  const resetPasswordConfirmForm = document.getElementById('resetPasswordConfirmForm');
   const themeToggle = document.getElementById('themeToggle');
   const searchInput = document.getElementById('navbarSearch');
   if (searchInput) searchInput.addEventListener('input', handleSearch);
@@ -39,10 +43,17 @@ function bindEvents() {
   if (registerForm) registerForm.addEventListener('submit', handleRegister);
   if (addPlaceForm) addPlaceForm.addEventListener('submit', handleAddPlace);
   if (feedbackForm) feedbackForm.addEventListener('submit', handleAddFeedback);
+  if (resetPasswordRequestForm) resetPasswordRequestForm.addEventListener('submit', handleResetPasswordRequest);
+  if (resetPasswordConfirmForm) resetPasswordConfirmForm.addEventListener('submit', handleResetPasswordConfirm);
   if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 }
 
 function restoreSession() {
+  // Não redireciona se já está na página de autenticação
+  if (window.location.pathname.includes('auth.html')) {
+    return;
+  }
+
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('user');
 
@@ -142,6 +153,11 @@ async function handleLogin(event) {
 
     if (!response.ok) {
       showError('loginFormError', data.message || 'Erro ao fazer login.');
+      const loginFormEl = document.getElementById('loginForm');
+      loginFormEl.classList.remove('shake');
+      void loginFormEl.offsetWidth;
+      loginFormEl.classList.add('shake');
+      setTimeout(() => loginFormEl.classList.remove('shake'), 500);
       return;
     }
 
@@ -191,6 +207,11 @@ async function handleRegister(event) {
 
     if (!response.ok) {
       showError('registerFormError', data.message || 'Erro ao cadastrar.');
+      const registerFormEl = document.getElementById('registerForm');
+      registerFormEl.classList.remove('shake');
+      void registerFormEl.offsetWidth;
+      registerFormEl.classList.add('shake');
+      setTimeout(() => registerFormEl.classList.remove('shake'), 500);
       return;
     }
 
@@ -211,6 +232,7 @@ function logout() {
   currentToken = null;
   places = [];
   currentFeedbackPlaceId = null;
+  currentResetToken = null;
 
   localStorage.removeItem('token');
   localStorage.removeItem('user');
@@ -273,7 +295,9 @@ async function handleAddPlace(event) {
     photo_url: photoUrl,
     visited: false,
     feedback: '',
-    category: category
+    category,
+    favorited: false,
+    rating: ''
   };
 
   places = [optimisticPlace, ...places];
@@ -356,6 +380,73 @@ async function markAsVisited(placeId, button) {
   }
 }
 
+async function toggleFavorite(placeId) {
+  const place = getPlaceById(placeId);
+  if (!place) return;
+
+  const previousFavorite = normalizeBoolean(place.favorited);
+  const nextFavorite = !previousFavorite;
+
+  favoriteOverrides.set(String(placeId), nextFavorite);
+  place.favorited = nextFavorite;
+  renderPlaces();
+
+  try {
+    const response = await fetch(`${API_URL}/places/${encodeURIComponent(placeId)}/favorite`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      favoriteOverrides.delete(String(placeId));
+      place.favorited = previousFavorite;
+      renderPlaces();
+      showToast(data.message || 'Erro ao favoritar lugar.', 'error');
+      return;
+    }
+
+    favoriteOverrides.delete(String(placeId));
+    showToast(nextFavorite ? 'Lugar favorito!' : 'Favorito removido.', 'success');
+  } catch (error) {
+    favoriteOverrides.delete(String(placeId));
+    place.favorited = previousFavorite;
+    renderPlaces();
+    showToast('Erro ao favoritar lugar.', 'error');
+  }
+}
+
+async function pickRandomPlace() {
+  try {
+    const response = await fetch(`${API_URL}/places/random`, {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      showToast(data.message || 'Não foi possível sortear um lugar.', 'error');
+      return;
+    }
+
+    showToast(`Sorteado: ${data.name}`, 'info');
+    highlightPlace(data.id);
+  } catch (error) {
+    showToast('Erro ao sortear lugar.', 'error');
+  }
+}
+
+function highlightPlace(placeId) {
+  const selector = `.place-card[data-id="${CSS.escape(String(placeId))}"]`;
+  const card = document.querySelector(selector);
+  if (!card) return;
+
+  card.classList.add('place-card--highlight');
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => card.classList.remove('place-card--highlight'), 2400);
+}
+
 function updatePlaceCardUI(button, isVisited) {
   if (!button) return;
   const card = button.closest('.place-card');
@@ -365,7 +456,7 @@ function updatePlaceCardUI(button, isVisited) {
   const feedbackButton = card.querySelector('.action-button--feedback');
 
   if (badge) {
-    badge.textContent = isVisited ? '✅ Visitado' : '📍 Na lista';
+    badge.textContent = isVisited ? 'Visitado' : 'Na lista';
     badge.classList.toggle('place-card__badge--visited', isVisited);
     badge.classList.toggle('place-card__badge--pending', !isVisited);
   }
@@ -384,56 +475,145 @@ function updatePlaceCardUI(button, isVisited) {
   }
 }
 
-async function deletePlace(placeId, button) {
-  if (!confirm('Deletar este lugar?')) return;
+let pendingDeleteId = null;
+let pendingDeleteButton = null;
 
-  const previousPlaces = places.slice();
-  places = places.filter((place) => String(place.id) !== String(placeId));
-  renderPlaces();
-
-  const card = button?.closest?.('.place-card');
-  if (card) card.remove();
-
-  try {
-    const response = await fetch(`${API_URL}/places/${encodeURIComponent(placeId)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${currentToken}` }
-    });
-
-    if (!response.ok) {
-      const data = await safeJson(response);
-      showToast(data.message || 'Erro ao deletar lugar.', 'error');
+function deletePlace(placeId, button) {
+  pendingDeleteId = placeId;
+  pendingDeleteButton = button;
+  openModal('confirmDeleteModal');
+  document.getElementById('confirmDeleteBtn').onclick = async () => {
+    closeModal('confirmDeleteModal');
+    const previousPlaces = places.slice();
+    places = places.filter((place) => String(place.id) !== String(pendingDeleteId));
+    renderPlaces();
+    try {
+      const response = await fetch(`${API_URL}/places/${encodeURIComponent(pendingDeleteId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${currentToken}` }
+      });
+      if (!response.ok) {
+        const data = await safeJson(response);
+        showToast(data.message || 'Erro ao deletar lugar.', 'error');
+        places = previousPlaces;
+        renderPlaces();
+      } else {
+        showToast('Lugar deletado com sucesso!', 'success');
+      }
+    } catch (error) {
+      showToast('Erro ao deletar lugar.', 'error');
       places = previousPlaces;
       renderPlaces();
-    } else {
-      showToast('Lugar deletado com sucesso!', 'success');
     }
-  } catch (error) {
-    showToast('Erro ao deletar lugar.', 'error');
-    places = previousPlaces;
-    renderPlaces();
-  }
+    pendingDeleteId = null;
+    pendingDeleteButton = null;
+  };
 }
 
 // ===== FEEDBACK =====
 function openFeedbackModal(placeId) {
   currentFeedbackPlaceId = placeId;
-  clearFormErrors(['feedbackTextError', 'feedbackFormError']);
+  clearFormErrors(['feedbackTextError', 'feedbackRatingError', 'feedbackFormError']);
 
   const place = getPlaceById(placeId);
   const feedbackInput = document.getElementById('feedbackText');
+  const feedbackRatingInput = document.getElementById('feedbackRatingValue');
   if (feedbackInput) {
     feedbackInput.value = place?.feedback ? String(place.feedback) : '';
+  }
+  if (feedbackRatingInput) {
+    feedbackRatingInput.value = place?.rating ? String(place.rating) : '';
   }
 
   openModal('feedbackModal');
 }
 
+async function handleResetPasswordRequest(event) {
+  event.preventDefault();
+  clearFormErrors(['resetEmailError', 'resetRequestFormError']);
+
+  const email = document.getElementById('resetEmail').value.trim();
+
+  if (!email) {
+    showFieldError('resetEmailError', 'Informe o email.');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/auth/reset-password?email=${encodeURIComponent(email)}`, {
+      method: 'POST'
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      showError('resetRequestFormError', data.message || 'Erro ao gerar desafio.');
+      return;
+    }
+
+    currentResetToken = data.token;
+    document.getElementById('resetQuestionText').textContent = data.question;
+    document.getElementById('resetAnswer').value = '';
+    document.getElementById('resetNewPassword').value = '';
+    closeModal('resetPasswordRequestModal');
+    openModal('resetPasswordConfirmModal');
+    showToast('Desafio gerado. Responda para redefinir a senha.', 'info');
+  } catch (error) {
+    showError('resetRequestFormError', 'Erro ao gerar desafio.');
+  }
+}
+
+async function handleResetPasswordConfirm(event) {
+  event.preventDefault();
+  clearFormErrors(['resetAnswerError', 'resetNewPasswordError', 'resetConfirmFormError']);
+
+  const answer = document.getElementById('resetAnswer').value.trim();
+  const newPassword = document.getElementById('resetNewPassword').value;
+  const email = document.getElementById('resetEmail')?.value.trim();
+
+  if (!currentResetToken) {
+    showError('resetConfirmFormError', 'Solicite um novo desafio primeiro.');
+    return;
+  }
+
+  if (!answer) {
+    showFieldError('resetAnswerError', 'Informe a resposta.');
+    return;
+  }
+
+  if (!newPassword) {
+    showFieldError('resetNewPasswordError', 'Informe a nova senha.');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: currentResetToken, answer, new_password: newPassword, email })
+    });
+
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      showError('resetConfirmFormError', data.message || 'Erro ao redefinir senha.');
+      return;
+    }
+
+    currentResetToken = null;
+    closeModal('resetPasswordConfirmModal');
+    showToast('Senha redefinida com sucesso!', 'success');
+  } catch (error) {
+    showError('resetConfirmFormError', 'Erro ao redefinir senha.');
+  }
+}
+
 async function handleAddFeedback(event) {
   event.preventDefault();
-  clearFormErrors(['feedbackTextError', 'feedbackFormError']);
+  clearFormErrors(['feedbackTextError', 'feedbackRatingError', 'feedbackFormError']);
 
   const feedback = document.getElementById('feedbackText').value.trim();
+  const rating = document.getElementById('feedbackRatingValue').value;
 
   if (!currentFeedbackPlaceId) {
     showError('feedbackFormError', 'Selecione um lugar primeiro.');
@@ -445,8 +625,13 @@ async function handleAddFeedback(event) {
     return;
   }
 
+  if (!rating) {
+    showFieldError('feedbackRatingError', 'Selecione uma nota.');
+    return;
+  }
+
   try {
-    const response = await fetch(`${API_URL}/places/${encodeURIComponent(currentFeedbackPlaceId)}/feedback`, {
+    const feedbackResponse = await fetch(`${API_URL}/places/${encodeURIComponent(currentFeedbackPlaceId)}/feedback`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${currentToken}`,
@@ -455,19 +640,35 @@ async function handleAddFeedback(event) {
       body: JSON.stringify({ feedback })
     });
 
-    const data = await safeJson(response);
+    const feedbackData = await safeJson(feedbackResponse);
 
-    if (!response.ok) {
-      showError('feedbackFormError', data.message || 'Erro ao salvar feedback.');
+    if (!feedbackResponse.ok) {
+      showError('feedbackFormError', feedbackData.message || 'Erro ao salvar feedback.');
+      return;
+    }
+
+    const ratingResponse = await fetch(`${API_URL}/places/${encodeURIComponent(currentFeedbackPlaceId)}/rating`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ rating })
+    });
+
+    const ratingData = await safeJson(ratingResponse);
+
+    if (!ratingResponse.ok) {
+      showError('feedbackFormError', ratingData.message || 'Feedback salvo, mas a nota não foi atualizada.');
       return;
     }
 
     document.getElementById('feedbackForm').reset();
     closeModal('feedbackModal');
     await loadPlaces();
-    showToast('Feedback adicionado com sucesso!', 'success');
+    showToast('Feedback e nota salvos com sucesso!', 'success');
   } catch (error) {
-    showError('feedbackFormError', 'Erro ao salvar feedback.');
+    showError('feedbackFormError', 'Erro ao salvar feedback e nota.');
   }
 }
 
@@ -519,12 +720,12 @@ function renderPlaces() {
   let sectionsToShow = [];
   
   if (currentFilter === 'all') {
-    if (pending.length > 0) sectionsToShow.push({ title: '📍 Para visitar', count: pending.length, places: pending });
-    if (visited.length > 0) sectionsToShow.push({ title: '✅ Já visitamos', count: visited.length, places: visited });
+    if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', count: pending.length, places: pending });
+    if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', count: visited.length, places: visited });
   } else if (currentFilter === 'pending') {
-    if (pending.length > 0) sectionsToShow.push({ title: '📍 Para visitar', count: pending.length, places: pending });
+    if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', count: pending.length, places: pending });
   } else if (currentFilter === 'visited') {
-    if (visited.length > 0) sectionsToShow.push({ title: '✅ Já visitamos', count: visited.length, places: visited });
+    if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', count: visited.length, places: visited });
   }
 
   if (!sectionsToShow.length) {
@@ -560,14 +761,22 @@ function renderPlaceCard(place) {
   const photoUrl = photoRaw ? escapeAttr(photoRaw) : '';
   const override = visitedOverrides.get(String(place.id ?? safeId));
   const isVisited = typeof override === 'boolean' ? override : normalizeVisited(place.visited);
+  const favoriteOverride = favoriteOverrides.get(String(place.id ?? safeId));
+  const isFavorite = typeof favoriteOverride === 'boolean' ? favoriteOverride : normalizeBoolean(place.favorited);
   const badgeClass = isVisited ? 'place-card__badge--visited' : 'place-card__badge--pending';
-  const badgeText = isVisited ? '✅ Visitado' : '📍 Na lista';
+  const badgeText = isVisited ? 'Visitado' : 'Na lista';
   const feedback = place.feedback ? `<p class="place-card__feedback">"${escapeHtml(place.feedback)}"</p>` : '';
   const color = hashColor(String(place.name ?? place.id ?? 'V'));
   const feedbackDisabledAttr = !isVisited ? 'disabled aria-disabled="true" title="Marque como visitado primeiro"' : 'title="Feedback"';
   const visitedLabel = isVisited ? 'Visitado ✓' : '✓ Visitei';
   const visitedClass = isVisited ? 'is-visited' : '';
-  const categoryBadge = place.category ? `<span class="place-card__category">${escapeHtml(place.category)}</span>` : '';
+  const categoryBadge = place.category
+    ? `<span class="place-card__category">${escapeHtml(place.category)}</span>`
+    : '';
+  const ratingValue = place.rating ? Number(place.rating) : 0;
+  const ratingBadge = ratingValue ? `<span class="place-card__rating">⭐ ${ratingValue}</span>` : '';
+  const favoriteLabel = isFavorite ? '♥' : '♡';
+  const favoriteClass = isFavorite ? 'is-favorite' : '';
 
   if (photoUrl) {
     return `
@@ -580,11 +789,13 @@ function renderPlaceCard(place) {
             ${categoryBadge}
             <div class="place-card__meta">
               <span class="place-card__badge ${badgeClass}">${badgeText}</span>
+              ${ratingBadge}
               <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
             </div>
             ${feedback}
           </div>
           <div class="place-card__actions">
+            <button type="button" class="action-button action-button--favorite ${favoriteClass}" onclick="toggleFavorite('${safeId}')" title="Favoritar lugar">${favoriteLabel}</button>
             <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
             <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
               <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
@@ -606,11 +817,13 @@ function renderPlaceCard(place) {
         ${categoryBadge}
         <div class="place-card__meta">
           <span class="place-card__badge ${badgeClass}">${badgeText}</span>
+          ${ratingBadge}
           <a class="place-card__maps" href="${mapsUrl}" target="_blank" rel="noopener noreferrer">Ver no Maps →</a>
         </div>
         ${feedback}
       </div>
       <div class="place-card__actions">
+        <button type="button" class="action-button action-button--favorite ${favoriteClass}" onclick="toggleFavorite('${safeId}')" title="Favoritar lugar">${favoriteLabel}</button>
         <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
         <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
           <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
@@ -727,6 +940,14 @@ function getPlaceById(placeId) {
 }
 
 function normalizeVisited(value) {
+  if (value === true || value === 1 || value === '1') return true;
+  if (typeof value === 'string') {
+    return value.trim().toLowerCase() === 'true';
+  }
+  return false;
+}
+
+function normalizeBoolean(value) {
   if (value === true || value === 1 || value === '1') return true;
   if (typeof value === 'string') {
     return value.trim().toLowerCase() === 'true';

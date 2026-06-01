@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 class PlaceRepository:
 
-    COLUMNS = ["id", "user_id", "name", "maps_url", "visited", "feedback", "created_at", "updated_at", "photo_url", "category"]
+    COLUMNS = ["id", "user_id", "name", "maps_url", "visited", "feedback", "created_at", "updated_at", "photo_url", "category", "favorited", "rating"]
     def __init__(self):
         self.sheet = get_worksheet(PLACES_SHEET)
 
@@ -36,9 +36,9 @@ class PlaceRepository:
     def create_place(self, user_id, name, maps_url, category, photo_url=""):
         id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
-        self.sheet.append_row([id, user_id, name, maps_url, False, "", now, now, photo_url, category])
+        self.sheet.append_row([id, user_id, name, maps_url, False, "", now, now, photo_url, category, False, ""])
 
-        return {"id": id, "user_id": user_id, "name": name, "maps_url": maps_url, "visited": False, "feedback": "", "created_at": now, "updated_at": now, "photo_url": photo_url, "category":category}
+        return {"id": id, "user_id": user_id, "name": name, "maps_url": maps_url, "visited": False, "feedback": "", "created_at": now, "updated_at": now, "photo_url": photo_url, "category": category, "favorited": False, "rating": ""}
     
     def _find_row_index(self, place_id):
         rows = self._get_all_rows()

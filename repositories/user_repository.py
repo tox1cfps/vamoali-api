@@ -1,6 +1,17 @@
 from utils.sheets_client import get_worksheet
 from config.settings import USERS_SHEET
 import uuid
+from utils.encryption import encrypt, decrypt
+
+
+def _maybe_decrypt(value):
+    if value in (None, ""):
+        return value
+
+    try:
+        return decrypt(value)
+    except Exception:
+        return value
 
 class UserRepository:
     def __init__(self):
@@ -13,8 +24,14 @@ class UserRepository:
         rows = self._get_all_rows()
 
         for row in rows:
-            if row["email"] == email:
-                return row
+            decrypted_email = _maybe_decrypt(row.get("email"))
+
+            if decrypted_email == email:
+                return {
+                    **row,
+                    "email": decrypted_email,
+                    "username": _maybe_decrypt(row.get("username")),
+                }
             
         return None
     
@@ -23,12 +40,29 @@ class UserRepository:
 
         for row in rows:
             if row["id"] == id:
-                return row
+                return {
+                    **row,
+                    "email": _maybe_decrypt(row.get("email")),
+                    "username": _maybe_decrypt(row.get("username")),
+                }
             
         return None
     
     def create_user(self, username, email, password_hash):
         id = str(uuid.uuid4())
-        self.sheet.append_row([id, username, email, password_hash])
+        self.sheet.append_row([id, encrypt(username), encrypt(email), password_hash])
 
-        return {"id":id, "username":username, "email":email}
+        return {"id": id, "username": username}
+
+    def update_password(self, email, new_password_hash):
+        rows = self._get_all_rows()
+
+        for index, row in enumerate(rows):
+            decrypted_email = _maybe_decrypt(row.get("email"))
+
+            if decrypted_email == email:
+                sheet_row = index + 2
+                self.sheet.update_cell(sheet_row, 4, new_password_hash)
+                return True
+
+        return False

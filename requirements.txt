@@ -1,6 +1,7 @@
 flask
 pyjwt
 bcrypt
+cryptography
 python-dotenv
 gspread
 oauth2client

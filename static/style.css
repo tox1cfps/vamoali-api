@@ -215,6 +215,19 @@ svg {
   border-bottom-color: var(--coral);
 }
 
+.auth-link-button {
+  margin-top: 10px;
+  background: transparent;
+  color: var(--coral);
+  font-weight: 700;
+  justify-self: start;
+  padding: 0;
+}
+
+.auth-link-button:hover {
+  text-decoration: underline;
+}
+
 .auth-form {
   display: none;
   gap: 16px;
@@ -346,6 +359,16 @@ svg {
 
 .secondary-button:hover {
   background: rgba(17, 17, 17, 0.04);
+}
+
+body.dark-mode .secondary-button {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #f0f0ff;
+  background: transparent;
+}
+
+body.dark-mode .secondary-button:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* NAVBAR */
@@ -740,9 +763,19 @@ body.dark-mode .theme-toggle__moon {
 
 .places-header {
   padding: 40px 0 24px;
-  text-align: center;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
   max-width: 720px;
   margin: 0 auto;
+}
+
+.places-header__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .places-header h1 {
@@ -896,6 +929,18 @@ body.dark-mode .place-card__category {
   gap: 12px;
 }
 
+.place-card__rating {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 193, 7, 0.14);
+  color: #9a6b00;
+  border: 1px solid rgba(255, 193, 7, 0.22);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .place-card__badge {
   display: inline-flex;
   align-items: center;
@@ -984,6 +1029,33 @@ body.dark-mode .icon-tint-dark {
   width: auto;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.action-button--favorite,
+.action-button--rate {
+  min-width: 36px;
+  width: 36px;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.action-button--favorite.is-favorite {
+  background: rgba(214, 80, 80, 0.12);
+  border-color: rgba(214, 80, 80, 0.2);
+  color: var(--danger);
+}
+
+.action-button--favorite:hover:not(:disabled) {
+  background: rgba(214, 80, 80, 0.12);
+  border-color: rgba(214, 80, 80, 0.2);
+  color: var(--danger);
+}
+
+.action-button--rate:hover:not(:disabled) {
+  background: rgba(255, 193, 7, 0.16);
+  border-color: rgba(255, 193, 7, 0.35);
+  color: #9a6b00;
 }
 
 .action-button--visited.is-visited {
@@ -1175,6 +1247,12 @@ body.dark-mode .place-card__feedback {
   color: rgba(255, 255, 255, 0.6);
 }
 
+body.dark-mode .place-card__rating {
+  background: rgba(255, 193, 7, 0.12);
+  color: #ffd56a;
+  border-color: rgba(255, 193, 7, 0.18);
+}
+
 body.dark-mode .places-header h1 {
   color: #f0f0ff;
 }
@@ -1229,6 +1307,18 @@ body.dark-mode .action-button--visited.is-visited:hover:not(:disabled) {
   background: rgba(76, 175, 80, 0.28);
   border-color: rgba(76, 175, 80, 0.3);
   color: #81c784;
+}
+
+body.dark-mode .action-button--favorite.is-favorite {
+  background: rgba(214, 80, 80, 0.18);
+  border-color: rgba(214, 80, 80, 0.28);
+  color: #ff9a9a;
+}
+
+body.dark-mode .action-button--rate:hover:not(:disabled) {
+  background: rgba(255, 193, 7, 0.18);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #ffd56a;
 }
 
 body.dark-mode .places-footer {
@@ -1339,6 +1429,11 @@ body.dark-mode .places-footer {
   border-radius: 20px;
 }
 
+.place-card--highlight {
+  outline: 3px solid rgba(255, 107, 74, 0.35);
+  box-shadow: 0 0 0 6px rgba(255, 107, 74, 0.08), 0 10px 30px rgba(255, 107, 74, 0.12);
+}
+
 .place-card__photo {
   width: 100%;
   height: 160px;
@@ -1401,6 +1496,15 @@ body.dark-mode .place-card--with-photo {
     padding-left: 20px;
     padding-right: 20px;
   }
+
+  .places-header {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .places-header__actions {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1459,3 +1563,18 @@ body.dark-mode .place-card--with-photo {
     bottom: 16px;
   }
 }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-4px); }
+  90% { transform: translateX(4px); }
+}
+.auth-form.shake {
+  animation: shake 0.5s ease;
+}
+
+

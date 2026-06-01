@@ -54,7 +54,7 @@
             </div>
 
             <div class="form-error" id="loginFormError" aria-live="polite">
-              <span class="form-error__icon">⚠️</span>
+              <img src="warning-1-svgrepo-com.svg" alt="" class="form-error__icon" style="width:20px;height:20px;">
               <span class="form-error__text"></span>
             </div>
 
@@ -62,6 +62,8 @@
               <span>Entrar</span>
               <span class="primary-button__arrow">→</span>
             </button>
+
+            <button type="button" class="auth-link-button" onclick="openModal('resetPasswordRequestModal')">Esqueci minha senha</button>
           </form>
 
           <form id="registerForm" class="auth-form" action="javascript:void(0);" novalidate>
@@ -84,7 +86,7 @@
             </div>
 
             <div class="form-error" id="registerFormError" aria-live="polite">
-              <span class="form-error__icon">⚠️</span>
+              <img src="warning-1-svgrepo-com.svg" alt="" class="form-error__icon" style="width:20px;height:20px;">
               <span class="form-error__text"></span>
             </div>
 
@@ -98,29 +100,76 @@
     </section>
   </main>
 
-  <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema" style="position: fixed; top: 20px; right: 20px; z-index: 100;">
-    <span class="theme-toggle__track">
-      <span class="theme-toggle__circle">
-        <svg class="theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-        <svg class="theme-toggle__moon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-      </span>
-    </span>
-  </button>
-
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js?v=10"></script>
+  <div id="resetPasswordRequestModal" class="modal" onclick="if(event.target===this) closeModal('resetPasswordRequestModal')">
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="resetRequestTitle">
+      <div class="modal__header">
+        <img src="warning-1-svgrepo-com.svg" alt="" style="width:32px;height:32px;filter:invert(42%) sepia(75%) saturate(1545%) hue-rotate(330deg) brightness(96%) contrast(89%);">
+        <div>
+          <h2 id="resetRequestTitle">Esqueci minha senha</h2>
+          <p>Digite seu email para receber o desafio matemático.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('resetPasswordRequestModal')" aria-label="Fechar">✕</button>
+      </div>
+
+      <form id="resetPasswordRequestForm" class="modal-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="resetEmail">Email</label>
+          <input class="field-input" type="email" id="resetEmail" placeholder="voce@exemplo.com" required>
+          <span class="field-error" id="resetEmailError"></span>
+        </div>
+
+        <div class="form-error" id="resetRequestFormError" aria-live="polite">
+          <span class="form-error__icon">⚠️</span>
+          <span class="form-error__text"></span>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" onclick="closeModal('resetPasswordRequestModal')">Cancelar</button>
+          <button type="submit" class="primary-button">Gerar desafio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="resetPasswordConfirmModal" class="modal" onclick="if(event.target===this) closeModal('resetPasswordConfirmModal')">
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="resetConfirmTitle">
+      <div class="modal__header">
+        <div class="modal__emoji">🧠</div>
+        <div>
+          <h2 id="resetConfirmTitle">Desafio de segurança</h2>
+          <p id="resetQuestionText">Responda corretamente para continuar.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('resetPasswordConfirmModal')" aria-label="Fechar">✕</button>
+      </div>
+
+      <form id="resetPasswordConfirmForm" class="modal-form" novalidate>
+        <div class="field-group">
+          <label class="field-label" for="resetAnswer">Resposta</label>
+          <input class="field-input" type="text" id="resetAnswer" placeholder="Sua resposta" required>
+          <span class="field-error" id="resetAnswerError"></span>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="resetNewPassword">Nova senha</label>
+          <input class="field-input" type="password" id="resetNewPassword" placeholder="Crie uma nova senha" required>
+          <span class="field-error" id="resetNewPasswordError"></span>
+        </div>
+
+        <div class="form-error" id="resetConfirmFormError" aria-live="polite">
+          <span class="form-error__icon">⚠️</span>
+          <span class="form-error__text"></span>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="secondary-button" onclick="closeModal('resetPasswordConfirmModal')">Cancelar</button>
+          <button type="submit" class="primary-button">Redefinir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=11"></script>
 </body>
 </html>

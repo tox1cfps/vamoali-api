@@ -56,7 +56,12 @@
 
     <section class="places-shell">
       <header class="places-header">
-        <h1>Nossos lugares 🍽️</h1>
+        <div>
+          <h1>Nossos lugares 🍽️</h1>
+        </div>
+        <div class="places-header__actions">
+          <button type="button" class="secondary-button" onclick="pickRandomPlace()">Sortear lugar</button>
+        </div>
       </header>
 
       <div class="places-tabs" id="placesTabs">
@@ -68,10 +73,10 @@
       <div id="placesGrid" class="places-grid" aria-live="polite">
         <section id="emptyState" class="empty-state" style="display: none;">
           <div class="empty-state__card">
-            <div class="empty-state__icon" aria-hidden="true">📍</div>
+            <div class="empty-state__icon"><img src="hearts-love-svgrepo-com.svg" alt="" style="width:80px;height:80px;"></div>
             <h2>Nenhum lugar ainda 💕</h2>
             <p>Adicionem o primeiro lugar que vocês querem visitar juntos!</p>
-            <button type="button" class="primary-button primary-button--compact" onclick="openAddPlaceModal()">Adicionar primeiro lugar ✨</button>
+            <button type="button" class="primary-button primary-button--compact" onclick="openAddPlaceModal()"><img src="sparkles-svgrepo-com.svg" alt="" style="width:16px;height:16px;filter:brightness(0) invert(1);vertical-align:middle;margin-right:6px;">Adicionar primeiro lugar</button>
           </div>
         </section>
       </div>
@@ -86,7 +91,7 @@
   <div id="addPlaceModal" class="modal" onclick="if(event.target===this) closeModal('addPlaceModal')">
     <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="addPlaceTitle">
       <div class="modal__header">
-        <div class="modal__emoji">🗺️</div>
+        <div class="modal__emoji"><img src="map-svgrepo-com.svg" alt="" style="width:32px;height:32px;"></div>
         <div>
           <h2 id="addPlaceTitle">Adicionar lugar</h2>
           <p>Salve um novo destino para o casal.</p>
@@ -159,6 +164,19 @@
           <span class="field-error" id="feedbackTextError"></span>
         </div>
 
+        <div class="field-group">
+          <label class="field-label" for="feedbackRatingValue">Nota</label>
+          <select class="field-input" id="feedbackRatingValue" name="rating">
+            <option value="">Selecione uma nota</option>
+            <option value="1">1 - Ruim</option>
+            <option value="2">2 - Fraco</option>
+            <option value="3">3 - Ok</option>
+            <option value="4">4 - Bom</option>
+            <option value="5">5 - Incrível</option>
+          </select>
+          <span class="field-error" id="feedbackRatingError"></span>
+        </div>
+
         <div class="form-error" id="feedbackFormError" aria-live="polite">
           <span class="form-error__icon">⚠️</span>
           <span class="form-error__text"></span>
@@ -172,8 +190,25 @@
     </div>
   </div>
 
+  <div id="confirmDeleteModal" class="modal" onclick="if(event.target===this) closeModal('confirmDeleteModal')">
+    <div class="modal__dialog" style="max-width:400px;" role="dialog" aria-modal="true">
+      <div class="modal__header">
+        <img src="warning-1-svgrepo-com.svg" alt="" style="width:32px;height:32px;filter:invert(27%) sepia(89%) saturate(1200%) hue-rotate(340deg);">
+        <div>
+          <h2>Excluir lugar</h2>
+          <p>Tem certeza? Esta ação não pode ser desfeita.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('confirmDeleteModal')" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button type="button" class="secondary-button" onclick="closeModal('confirmDeleteModal')">Cancelar</button>
+        <button type="button" id="confirmDeleteBtn" style="min-height:48px;padding:0 18px;border-radius:12px;background:#d65050;color:#fff;border:none;font-weight:700;cursor:pointer;">Excluir</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

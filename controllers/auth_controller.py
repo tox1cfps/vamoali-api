@@ -28,3 +28,26 @@ def login():
         return jsonify(result), 200
     except ValueError as e:
         return jsonify({"success": False, "message": str(e)}), 400
+
+
+@bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    body = request.get_json(silent=True)
+
+    try:
+        if not body:
+            email = request.args.get("email")
+            result = auth_service.request_reset_password(email)
+            return jsonify(result), 200
+
+        result = auth_service.reset_password(
+            body.get("token"),
+            body.get("answer"),
+            body.get("new_password"),
+            body.get("email"),
+        )
+        return jsonify(result), 200
+    except LookupError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400

@@ -15,6 +15,18 @@ def get_places():
 
     return jsonify(places), 200
 
+
+@bp.route("/random", methods=["GET"])
+@jwt_required
+def get_random_place():
+    user_id = g.user_id
+
+    try:
+        result = place_service.get_random_place(user_id)
+        return jsonify(result), 200
+    except LookupError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+
 @bp.route("/", methods=["POST"])
 @jwt_required
 def create_place():
@@ -80,6 +92,38 @@ def add_feedback(place_id):
 
     try:
         result = place_service.add_feedback(user_id, place_id, body.get("feedback"))
+        return jsonify(result), 200
+    except LookupError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+
+@bp.route("/<place_id>/favorite", methods=["PATCH"])
+@jwt_required
+def toggle_favorite(place_id):
+    user_id = g.user_id
+
+    try:
+        result = place_service.toggle_favorite(user_id, place_id)
+        return jsonify(result), 200
+    except LookupError as e:
+        return jsonify({"success": False, "message": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+
+
+@bp.route("/<place_id>/rating", methods=["PATCH"])
+@jwt_required
+def add_rating(place_id):
+    user_id = g.user_id
+    body = request.get_json()
+
+    if not body:
+        return jsonify({"success": False, "message": "Body JSON é obrigatório"}), 400
+
+    try:
+        result = place_service.add_rating(user_id, place_id, body.get("rating"))
         return jsonify(result), 200
     except LookupError as e:
         return jsonify({"success": False, "message": str(e)}), 404
