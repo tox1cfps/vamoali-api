@@ -1,7 +1,12 @@
-from repositories.place_repository import PlaceRepository
 import random
 
+from repositories.place_repository import PlaceRepository
+from utils.validation import validate_category, validate_https_url, validate_string
+
+
 class PlaceService:
+    ALLOWED_PATCH_FIELDS = {"visited"}
+
     def __init__(self):
         self.place_repo = PlaceRepository()
 
@@ -24,46 +29,56 @@ class PlaceService:
     def get_places(self, user_id):
         return self.place_repo.find_all_by_user(user_id)
 
-
     def create_place(self, user_id, name, maps_url, category, photo_url=""):
-        if not name:
-            raise ValueError("O nome do lugar é obrigatório")
-        
+        name = validate_string(name, "Nome do lugar", required=True, max_length=120)
+        maps_url = validate_https_url(maps_url, "Link do Maps", required=True)
+        category = validate_category(category)
+        photo_url = validate_https_url(photo_url, "URL da foto")
+
         return self.place_repo.create_place(user_id, name, maps_url, category, photo_url)
-    
+
     def delete_place(self, user_id, place_id):
         place = self.place_repo.find_by_id(place_id)
-        
+
         if place is None:
             raise LookupError("Lugar não encontrado ")
-        
+
         if place["user_id"] != user_id:
             raise LookupError("Lugar não encontrado")
-        
+
         return self.place_repo.delete_place(place_id)
 
     def update_place(self, user_id, place_id, fields):
+        if not isinstance(fields, dict):
+            raise ValueError("Campos invalidos")
+
+        unexpected_fields = set(fields) - self.ALLOWED_PATCH_FIELDS
+        if unexpected_fields:
+            raise ValueError("Campos nao permitidos")
+        if "visited" not in fields or not isinstance(fields["visited"], bool):
+            raise ValueError("visited deve ser booleano")
+
         place = self.place_repo.find_by_id(place_id)
 
         if place is None:
             raise LookupError("Lugar não encontrado ")
-        
+
         if place["user_id"] != user_id:
             raise LookupError("Lugar não encontrado")
-        
-        return self.place_repo.update_place(place_id, fields)
-    
+
+        return self.place_repo.update_place(place_id, {"visited": fields["visited"]})
+
     def mark_visited(self, user_id, place_id):
         place = self.place_repo.find_by_id(place_id)
 
         if place is None:
             raise LookupError("Lugar não encontrado")
-        
+
         if place["user_id"] != user_id:
             raise LookupError("Lugar não encontrado")
-        
+
         return self.place_repo.update_place(place_id, {"visited": True})
-    
+
     def add_feedback(self, user_id, place_id, feedback):
         place = self.place_repo.find_by_id(place_id)
 
@@ -74,14 +89,12 @@ class PlaceService:
             raise LookupError("Lugar não encontrado")
 
         is_visited = self._is_truthy(place.get("visited"))
-        
+
         if not is_visited:
             raise ValueError("Só é possível adicionar feedback após marcar o lugar como visitado")
 
+        feedback = validate_string(feedback, "Feedback", required=True, max_length=1000)
 
-        if not feedback:
-            raise ValueError("Não esqueça o feedback!")
-        
         return self.place_repo.update_place(place_id, {"feedback": feedback})
 
     def toggle_favorite(self, user_id, place_id):

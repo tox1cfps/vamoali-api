@@ -1,3 +1,33 @@
-.venv
+# Local environment and secrets
+.venv/
 .env
 credentials.json
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+__init___.py
+
+# Tests, coverage, and lint caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+*.isorted
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime logs
+*.log

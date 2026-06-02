@@ -1,0 +1,41 @@
+from unittest.mock import Mock
+
+import pytest
+
+import config.settings as settings
+
+
+def test_validate_settings_accepts_test_environment():
+    settings.validate_settings()
+
+
+def test_validate_settings_rejects_short_jwt_secret(monkeypatch):
+    monkeypatch.setattr(settings, "JWT_SECRET", "short")
+    with pytest.raises(RuntimeError, match="JWT_SECRET"):
+        settings.validate_settings()
+
+
+def test_validate_settings_requires_google_credentials(monkeypatch):
+    monkeypatch.setattr(settings, "GOOGLE_CREDENTIALS_JSON", None)
+    monkeypatch.setattr(settings, "_credentials_file", Mock(return_value=Mock(is_file=lambda: False)))
+    with pytest.raises(RuntimeError, match="GOOGLE"):
+        settings.validate_settings()
+
+
+def test_validate_settings_rejects_invalid_fernet_key(monkeypatch):
+    monkeypatch.setattr(settings, "FERNET_KEY", "invalid")
+    with pytest.raises(RuntimeError, match="FERNET_KEY"):
+        settings.validate_settings()
+
+
+def test_validate_settings_rejects_invalid_google_credentials_json(monkeypatch):
+    monkeypatch.setattr(settings, "GOOGLE_CREDENTIALS_JSON", "credentials.json")
+    with pytest.raises(RuntimeError, match="JSON valido"):
+        settings.validate_settings()
+
+
+def test_validate_settings_requires_smtp_when_password_reset_is_enabled(monkeypatch):
+    monkeypatch.setattr(settings, "ENABLE_PASSWORD_RESET", True)
+    monkeypatch.setattr(settings, "SMTP_HOST", None)
+    with pytest.raises(RuntimeError, match="SMTP_HOST"):
+        settings.validate_settings()

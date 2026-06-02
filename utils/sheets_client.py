@@ -1,18 +1,29 @@
+import json
+
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from config.settings import CREDENTIALS_FILE, SHEET_NAME
+from google.oauth2.service_account import Credentials
+
+from config.settings import GOOGLE_CREDENTIALS_JSON, SHEET_NAME, _credentials_file
 
 SCOPES = [
-    "https://spreadsheets.google.com/feeds",
-    "https://www.googleapis.com/auth/drive"
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.readonly",
 ]
 
+
 def get_spreadsheet():
-    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDENTIALS_FILE, SCOPES)
+    if GOOGLE_CREDENTIALS_JSON:
+        creds = Credentials.from_service_account_info(
+            json.loads(GOOGLE_CREDENTIALS_JSON),
+            scopes=SCOPES,
+        )
+    else:
+        creds = Credentials.from_service_account_file(_credentials_file(), scopes=SCOPES)
 
     client = gspread.authorize(creds)
 
     return client.open(SHEET_NAME)
+
 
 def get_worksheet(sheet_name):
     sheet = get_spreadsheet().worksheet(sheet_name)

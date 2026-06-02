@@ -1,5 +1,5 @@
 ﻿// ===== CONFIG =====
-const API_URL = 'http://localhost:5000';
+const API_URL = '';
 
 // ===== STATE =====
 let currentUser = null;
@@ -19,8 +19,34 @@ document.addEventListener('DOMContentLoaded', init);
 
 function init() {
   bindEvents();
+  loadPublicConfig();
+  openPasswordResetFromLink();
   applyStoredTheme();
   restoreSession();
+}
+
+async function loadPublicConfig() {
+  const resetButton = document.getElementById('resetPasswordButton');
+  if (!resetButton) return;
+
+  try {
+    const response = await fetch(`${API_URL}/config`);
+    const config = await response.json();
+    resetButton.hidden = !config.enable_password_reset;
+  } catch (error) {
+    resetButton.hidden = true;
+  }
+}
+
+function openPasswordResetFromLink() {
+  const params = new URLSearchParams(window.location.search);
+  const resetToken = params.get('reset_token');
+  if (!resetToken) return;
+
+  currentResetToken = resetToken;
+  document.getElementById('resetNewPassword').value = '';
+  openModal('resetPasswordConfirmModal');
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 function handleSearch(event) {
@@ -540,44 +566,34 @@ async function handleResetPasswordRequest(event) {
   }
 
   try {
-    const response = await fetch(`${API_URL}/auth/reset-password?email=${encodeURIComponent(email)}`, {
-      method: 'POST'
+    const response = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
     });
 
     const data = await safeJson(response);
 
     if (!response.ok) {
-      showError('resetRequestFormError', data.message || 'Erro ao gerar desafio.');
+      showError('resetRequestFormError', data.message || 'Erro ao solicitar redefinição.');
       return;
     }
 
-    currentResetToken = data.token;
-    document.getElementById('resetQuestionText').textContent = data.question;
-    document.getElementById('resetAnswer').value = '';
-    document.getElementById('resetNewPassword').value = '';
     closeModal('resetPasswordRequestModal');
-    openModal('resetPasswordConfirmModal');
-    showToast('Desafio gerado. Responda para redefinir a senha.', 'info');
+    showToast(data.message || 'Se a conta existir, enviaremos instruções por email.', 'info');
   } catch (error) {
-    showError('resetRequestFormError', 'Erro ao gerar desafio.');
+    showError('resetRequestFormError', 'Erro ao solicitar redefinição.');
   }
 }
 
 async function handleResetPasswordConfirm(event) {
   event.preventDefault();
-  clearFormErrors(['resetAnswerError', 'resetNewPasswordError', 'resetConfirmFormError']);
+  clearFormErrors(['resetNewPasswordError', 'resetConfirmFormError']);
 
-  const answer = document.getElementById('resetAnswer').value.trim();
   const newPassword = document.getElementById('resetNewPassword').value;
-  const email = document.getElementById('resetEmail')?.value.trim();
 
   if (!currentResetToken) {
-    showError('resetConfirmFormError', 'Solicite um novo desafio primeiro.');
-    return;
-  }
-
-  if (!answer) {
-    showFieldError('resetAnswerError', 'Informe a resposta.');
+    showError('resetConfirmFormError', 'Solicite um novo link de redefinição.');
     return;
   }
 
@@ -590,7 +606,7 @@ async function handleResetPasswordConfirm(event) {
     const response = await fetch(`${API_URL}/auth/reset-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: currentResetToken, answer, new_password: newPassword, email })
+      body: JSON.stringify({ token: currentResetToken, new_password: newPassword })
     });
 
     const data = await safeJson(response);
@@ -716,6 +732,14 @@ function renderPlaces() {
     .filter(p => normalizeVisited(p.visited) && matchesSearch(p))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
+  const favorites = places
+    .filter((place) => {
+      const override = favoriteOverrides.get(String(place.id));
+      const isFavorite = typeof override === 'boolean' ? override : normalizeBoolean(place.favorited);
+      return isFavorite && matchesSearch(place);
+    })
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
   // Filter based on current filter
   let sectionsToShow = [];
   
@@ -726,6 +750,8 @@ function renderPlaces() {
     if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', count: pending.length, places: pending });
   } else if (currentFilter === 'visited') {
     if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', count: visited.length, places: visited });
+  } else if (currentFilter === 'favorites') {
+    if (favorites.length > 0) sectionsToShow.push({ title: 'Favoritos', count: favorites.length, places: favorites });
   }
 
   if (!sectionsToShow.length) {

@@ -1,7 +1,10 @@
 from functools import wraps
-from flask import request, g, jsonify
+
 import jwt
+from flask import g, jsonify, request
+
 from services.auth_service import AuthService
+
 
 def jwt_required(f):
     @wraps(f)
@@ -21,4 +24,5 @@ def jwt_required(f):
             return jsonify({"success": False, "message": "Token Inválido"}), 401
 
         return f(*args, **kwargs)
+
     return decorated

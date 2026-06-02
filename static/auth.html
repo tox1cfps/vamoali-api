@@ -63,7 +63,7 @@
               <span class="primary-button__arrow">→</span>
             </button>
 
-            <button type="button" class="auth-link-button" onclick="openModal('resetPasswordRequestModal')">Esqueci minha senha</button>
+            <button type="button" id="resetPasswordButton" class="auth-link-button" onclick="openModal('resetPasswordRequestModal')" hidden>Esqueci minha senha</button>
           </form>
 
           <form id="registerForm" class="auth-form" action="javascript:void(0);" novalidate>
@@ -108,7 +108,7 @@
         <img src="warning-1-svgrepo-com.svg" alt="" style="width:32px;height:32px;filter:invert(42%) sepia(75%) saturate(1545%) hue-rotate(330deg) brightness(96%) contrast(89%);">
         <div>
           <h2 id="resetRequestTitle">Esqueci minha senha</h2>
-          <p>Digite seu email para receber o desafio matemático.</p>
+          <p>Digite seu email para receber o link de redefinição.</p>
         </div>
         <button type="button" class="modal__close" onclick="closeModal('resetPasswordRequestModal')" aria-label="Fechar">✕</button>
       </div>
@@ -127,7 +127,7 @@
 
         <div class="modal-actions">
           <button type="button" class="secondary-button" onclick="closeModal('resetPasswordRequestModal')">Cancelar</button>
-          <button type="submit" class="primary-button">Gerar desafio</button>
+          <button type="submit" class="primary-button">Enviar link</button>
         </div>
       </form>
     </div>
@@ -136,21 +136,15 @@
   <div id="resetPasswordConfirmModal" class="modal" onclick="if(event.target===this) closeModal('resetPasswordConfirmModal')">
     <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="resetConfirmTitle">
       <div class="modal__header">
-        <div class="modal__emoji">🧠</div>
+        <div class="modal__emoji">🔐</div>
         <div>
-          <h2 id="resetConfirmTitle">Desafio de segurança</h2>
-          <p id="resetQuestionText">Responda corretamente para continuar.</p>
+          <h2 id="resetConfirmTitle">Redefinir senha</h2>
+          <p>Crie uma nova senha para continuar.</p>
         </div>
         <button type="button" class="modal__close" onclick="closeModal('resetPasswordConfirmModal')" aria-label="Fechar">✕</button>
       </div>
 
       <form id="resetPasswordConfirmForm" class="modal-form" novalidate>
-        <div class="field-group">
-          <label class="field-label" for="resetAnswer">Resposta</label>
-          <input class="field-input" type="text" id="resetAnswer" placeholder="Sua resposta" required>
-          <span class="field-error" id="resetAnswerError"></span>
-        </div>
-
         <div class="field-group">
           <label class="field-label" for="resetNewPassword">Nova senha</label>
           <input class="field-input" type="password" id="resetNewPassword" placeholder="Crie uma nova senha" required>

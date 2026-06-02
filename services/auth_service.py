@@ -1,28 +1,23 @@
-from repositories.user_repository import UserRepository
+import hashlib
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
+
 import bcrypt
 import jwt
-import random
-import secrets
-from datetime import datetime, timedelta, timezone
-from config.settings import JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRATION_HOURS
+
+from config.settings import JWT_ALGORITHM, JWT_EXPIRATION_HOURS, JWT_SECRET, PASSWORD_RESET_EXPIRATION_MINUTES
+from repositories.user_repository import UserRepository
+from utils.mailer import send_password_reset_email
+from utils.validation import normalize_email, validate_string
 
 
 class AuthService:
     _reset_tokens = {}
-    _reset_questions = [
-        {"question": "Quanto é PI ao quadrado? (arredonde para 2 casas)", "answer": "9.87"},
-        {"question": "Quanto é a raiz quadrada de 144?", "answer": "12"},
-        {"question": "Quanto é 7 elevado a 3?", "answer": "343"},
-        {"question": "Quantos segundos tem uma hora?", "answer": "3600"},
-        {"question": "Quanto é 13 vezes 13?", "answer": "169"},
-    ]
-    _punitive_messages = [
-        "Resposta errada. Você tropeçou na conta e caiu com estilo.",
-        "Nada feito. A matemática deu risada e foi embora.",
-        "Resposta incorreta. Seu cérebro pediu recesso nessa rodada.",
-        "Falhou bonito. Volte para o ringue dos números.",
-        "Errou a conta. A planilha sentiu vergonha alheia.",
-    ]
+    RESET_REQUEST_RESPONSE = {
+        "success": True,
+        "message": "Se a conta existir, enviaremos instrucoes para redefinir a senha.",
+    }
 
     def __init__(self):
         self.user_repo = UserRepository()
@@ -30,111 +25,114 @@ class AuthService:
     @classmethod
     def _cleanup_reset_tokens(cls):
         now = datetime.now(timezone.utc)
-        expired = [token for token, data in cls._reset_tokens.items() if data["expires_at"] <= now]
+        expired = [token_hash for token_hash, data in cls._reset_tokens.items() if data["expires_at"] <= now]
 
-        for token in expired:
-            cls._reset_tokens.pop(token, None)
+        for token_hash in expired:
+            cls._reset_tokens.pop(token_hash, None)
+
+    @staticmethod
+    def _hash_reset_token(token):
+        if not isinstance(token, str) or not token:
+            raise ValueError("Token invalido ou expirado")
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _validate_password_strength(password):
-        if not password or len(password) < 8:
-            raise ValueError("A senha precisa ter no mínimo 8 caracteres")
+        if not isinstance(password, str) or len(password) < 8:
+            raise ValueError("A senha precisa ter no minimo 8 caracteres")
+
+        if len(password.encode("utf-8")) > 72:
+            raise ValueError("A senha precisa ter no maximo 72 bytes")
 
         if not any(char.isupper() for char in password):
-            raise ValueError("A senha precisa ter pelo menos uma letra maiúscula")
+            raise ValueError("A senha precisa ter pelo menos uma letra maiuscula")
 
         if not any(char.isdigit() for char in password):
-            raise ValueError("A senha precisa ter pelo menos um número")
+            raise ValueError("A senha precisa ter pelo menos um numero")
 
         special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
         if not any(char in special_chars for char in password):
             raise ValueError("A senha precisa ter pelo menos um caractere especial")
 
     @classmethod
-    def _create_reset_challenge(cls, email=None):
+    def _create_reset_token(cls, email):
         cls._cleanup_reset_tokens()
-        challenge = random.choice(cls._reset_questions)
-        token = secrets.token_hex(16)
-
-        cls._reset_tokens[token] = {
-            "answer": challenge["answer"],
-            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=5),
+        token = secrets.token_urlsafe(32)
+        token_hash = cls._hash_reset_token(token)
+        cls._reset_tokens[token_hash] = {
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_EXPIRATION_MINUTES),
             "email": email,
         }
+        return token, token_hash
 
-        return {"token": token, "question": challenge["question"]}
+    def request_reset_password(self, email):
+        email = normalize_email(email)
+        if self.user_repo.find_by_email(email) is None:
+            return self.RESET_REQUEST_RESPONSE
 
-    def request_reset_password(self, email=None):
-        return self._create_reset_challenge(email)
+        token, token_hash = self._create_reset_token(email)
+        try:
+            send_password_reset_email(email, token)
+        except Exception as exc:
+            self.__class__._reset_tokens.pop(token_hash, None)
+            raise RuntimeError("Nao foi possivel enviar o email de redefinicao") from exc
 
-    def reset_password(self, token, answer, new_password, email=None):
+        return self.RESET_REQUEST_RESPONSE
+
+    def reset_password(self, token, new_password):
         self.__class__._cleanup_reset_tokens()
-
-        token_data = self.__class__._reset_tokens.get(token)
+        token_hash = self._hash_reset_token(token)
+        token_data = self.__class__._reset_tokens.get(token_hash)
         if token_data is None:
-            raise ValueError("Token inválido ou expirado")
-
-        stored_email = token_data.get("email")
-        final_email = email or stored_email
-
-        if stored_email and email and stored_email != email:
-            raise ValueError("E-mail não confere com este token")
-
-        if final_email is None:
-            raise ValueError("E-mail obrigatório para redefinir a senha")
-
-        if str(answer).strip() != token_data["answer"]:
-            raise ValueError(random.choice(self._punitive_messages))
+            raise ValueError("Token invalido ou expirado")
 
         self._validate_password_strength(new_password)
-
         password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        updated = self.user_repo.update_password(final_email, password_hash)
-
+        updated = self.user_repo.update_password(token_data["email"], password_hash)
         if not updated:
-            raise LookupError("Usuário não encontrado")
+            raise LookupError("Usuario nao encontrado")
 
-        self.__class__._reset_tokens.pop(token, None)
+        self.__class__._reset_tokens.pop(token_hash, None)
         return {"success": True, "message": "Senha atualizada com sucesso"}
 
     def _generate_token(self, user_id):
         payload = {
             "sub": user_id,
             "iat": datetime.now(timezone.utc),
-            "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
-        }        
-
+            "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+            "jti": str(uuid.uuid4()),
+        }
         return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    
+
     @staticmethod
     def decode_token(token):
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
     def register_user(self, username, email, password):
+        username = validate_string(username, "Nome de usuario", required=True, max_length=80)
+        email = normalize_email(email)
         check_email = self.user_repo.find_by_email(email)
-
         if check_email is not None:
-            raise ValueError("E-mail já cadastrado")
+            raise ValueError("E-mail ja cadastrado")
 
         self._validate_password_strength(password)
-        
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
         user = self.user_repo.create_user(username, email, password_hash)
-
         token = self._generate_token(user["id"])
         return {"user": user, "token": token}
 
     def login_user(self, email, password):
+        email = normalize_email(email)
+        if not isinstance(password, str):
+            raise ValueError("Credenciais invalidas")
+
         check_email = self.user_repo.find_by_email(email)
-        
         if check_email is None:
-            raise ValueError("Credenciais Inválidas")
-        
+            raise ValueError("Credenciais invalidas")
+
         password_match = bcrypt.checkpw(password.encode("utf-8"), check_email["password_hash"].encode("utf-8"))
-        
         if not password_match:
-            raise ValueError("Credenciais Inválidas")
+            raise ValueError("Credenciais invalidas")
 
         user = {"id": check_email["id"], "username": check_email["username"]}
         token = self._generate_token(check_email["id"])

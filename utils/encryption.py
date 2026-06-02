@@ -1,6 +1,6 @@
 from cryptography.fernet import Fernet
-from config.settings import FERNET_KEY
 
+from config.settings import FERNET_KEY
 
 if not FERNET_KEY:
     raise RuntimeError("FERNET_KEY não configurada no ambiente")

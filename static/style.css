@@ -1566,6 +1566,22 @@ body.dark-mode .place-card--with-photo {
     padding: 24px 16px;
   }
 
+  .places-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .places-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .places-tab {
+    min-width: max-content;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
   .places-shell {
     padding-bottom: 100px;
   }

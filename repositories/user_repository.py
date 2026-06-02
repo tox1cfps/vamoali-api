@@ -1,7 +1,8 @@
-from utils.sheets_client import get_worksheet
-from config.settings import USERS_SHEET
 import uuid
-from utils.encryption import encrypt, decrypt
+
+from config.settings import USERS_SHEET
+from utils.encryption import decrypt, encrypt
+from utils.sheets_client import get_worksheet
 
 
 def _maybe_decrypt(value):
@@ -13,13 +14,14 @@ def _maybe_decrypt(value):
     except Exception:
         return value
 
+
 class UserRepository:
     def __init__(self):
         self.sheet = get_worksheet(USERS_SHEET)
 
     def _get_all_rows(self):
         return self.sheet.get_all_records()
-    
+
     def find_by_email(self, email):
         rows = self._get_all_rows()
 
@@ -32,9 +34,9 @@ class UserRepository:
                     "email": decrypted_email,
                     "username": _maybe_decrypt(row.get("username")),
                 }
-            
+
         return None
-    
+
     def find_by_id(self, id):
         rows = self._get_all_rows()
 
@@ -45,12 +47,15 @@ class UserRepository:
                     "email": _maybe_decrypt(row.get("email")),
                     "username": _maybe_decrypt(row.get("username")),
                 }
-            
+
         return None
-    
+
     def create_user(self, username, email, password_hash):
         id = str(uuid.uuid4())
-        self.sheet.append_row([id, encrypt(username), encrypt(email), password_hash])
+        self.sheet.append_row(
+            [id, encrypt(username), encrypt(email), password_hash],
+            value_input_option="RAW",
+        )
 
         return {"id": id, "username": username}
 
