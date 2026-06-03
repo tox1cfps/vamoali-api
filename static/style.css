@@ -1474,6 +1474,16 @@ body.dark-mode .places-footer {
   font-weight: 800;
 }
 
+.sharing-create-button {
+  border-color: #1f1f1f;
+  background: transparent;
+  color: var(--text);
+}
+
+.sharing-create-button:hover {
+  background: rgba(17, 17, 17, 0.06);
+}
+
 .sharing-invite {
   display: grid;
   gap: 12px;
@@ -1592,6 +1602,16 @@ body.dark-mode .sharing-member {
 body.dark-mode .sharing-invite {
   border-color: rgba(255, 111, 97, 0.28);
   background: rgba(255, 111, 97, 0.1);
+}
+
+body.dark-mode .sharing-create-button {
+  border-color: #1f1f1f;
+  background: transparent;
+  color: var(--text);
+}
+
+body.dark-mode .sharing-create-button:hover {
+  background: rgba(17, 17, 17, 0.06);
 }
 
 body.dark-mode .sharing-danger-button {

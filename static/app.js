@@ -356,7 +356,7 @@ function renderSharingContent() {
       <section class="sharing-section">
         <h3 class="sharing-section__title">Criar sua lista compartilhada</h3>
         <p class="places-subtitle">Gere um codigo ou link para convidar outra pessoa.</p>
-        <button class="secondary-button" type="button" onclick="createSharingInvite()">Criar convite</button>
+        <button class="secondary-button sharing-create-button" type="button" onclick="createSharingInvite()">Criar convite</button>
         ${inviteHtml}
       </section>
     `;
@@ -390,7 +390,7 @@ function renderSharingContent() {
       <h3 class="sharing-section__title">Membros da lista</h3>
       <div class="sharing-members">${membersHtml}</div>
       <div class="sharing-inline-actions">
-        <button class="secondary-button" type="button" onclick="createSharingInvite()">Criar novo convite</button>
+        <button class="secondary-button sharing-create-button" type="button" onclick="createSharingInvite()">Criar novo convite</button>
         <button class="sharing-danger-button" type="button" onclick="leaveSharingGroup()">Sair do grupo</button>
       </div>
       ${inviteHtml}
