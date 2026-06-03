@@ -6,8 +6,15 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 
-from config.settings import JWT_ALGORITHM, JWT_EXPIRATION_HOURS, JWT_SECRET, PASSWORD_RESET_EXPIRATION_MINUTES
+from config.settings import (
+    JWT_ALGORITHM,
+    JWT_EXPIRATION_HOURS,
+    JWT_SECRET,
+    LOGIN_CACHE_TTL_SECONDS,
+    PASSWORD_RESET_EXPIRATION_MINUTES,
+)
 from repositories.user_repository import UserRepository
+from utils.cache import login_cache
 from utils.mailer import send_password_reset_email
 from utils.validation import normalize_email, validate_string
 
@@ -21,6 +28,23 @@ class AuthService:
 
     def __init__(self):
         self.user_repo = UserRepository()
+        self.login_cache = login_cache
+
+    @staticmethod
+    def _login_cache_key(email):
+        return f"login:user:{email}"
+
+    def _find_user_for_login(self, email):
+        cache_key = self._login_cache_key(email)
+        cached_user = self.login_cache.get(cache_key)
+        if cached_user is not None:
+            return cached_user
+
+        user = self.user_repo.find_by_email(email)
+        if user is not None:
+            self.login_cache.set(cache_key, user, LOGIN_CACHE_TTL_SECONDS)
+
+        return user
 
     @classmethod
     def _cleanup_reset_tokens(cls):
@@ -92,6 +116,7 @@ class AuthService:
         if not updated:
             raise LookupError("Usuario nao encontrado")
 
+        self.login_cache.delete(self._login_cache_key(token_data["email"]))
         self.__class__._reset_tokens.pop(token_hash, None)
         return {"success": True, "message": "Senha atualizada com sucesso"}
 
@@ -118,6 +143,7 @@ class AuthService:
         self._validate_password_strength(password)
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user = self.user_repo.create_user(username, email, password_hash)
+        self.login_cache.delete(self._login_cache_key(email))
         token = self._generate_token(user["id"])
         return {"user": user, "token": token}
 
@@ -126,7 +152,7 @@ class AuthService:
         if not isinstance(password, str):
             raise ValueError("Credenciais invalidas")
 
-        check_email = self.user_repo.find_by_email(email)
+        check_email = self._find_user_for_login(email)
         if check_email is None:
             raise ValueError("Credenciais invalidas")
 

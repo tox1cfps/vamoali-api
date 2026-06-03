@@ -10,6 +10,8 @@ from services.auth_service import AuthService
 def service():
     instance = AuthService.__new__(AuthService)
     instance.user_repo = Mock()
+    instance.login_cache = Mock()
+    instance.login_cache.get.return_value = None
     AuthService._reset_tokens = {}
     return instance
 
@@ -53,6 +55,32 @@ def test_login_returns_public_user_and_token(service, monkeypatch):
         "user": {"id": "user-1", "username": "Ana"},
         "token": "jwt",
     }
+    service.login_cache.get.assert_called_once_with("login:user:ana@example.com")
+    service.login_cache.set.assert_called_once_with(
+        "login:user:ana@example.com",
+        {
+            "id": "user-1",
+            "username": "Ana",
+            "password_hash": "hash",
+        },
+        900,
+    )
+
+
+def test_login_uses_cached_user_without_repository_lookup(service, monkeypatch):
+    service.login_cache.get.return_value = {
+        "id": "user-1",
+        "username": "Ana",
+        "password_hash": "hash",
+    }
+    monkeypatch.setattr("services.auth_service.bcrypt.checkpw", lambda password, hashed: True)
+    monkeypatch.setattr(service, "_generate_token", lambda user_id: "jwt")
+
+    result = service.login_user("ana@example.com", "Strong1!")
+
+    assert result == {"user": {"id": "user-1", "username": "Ana"}, "token": "jwt"}
+    service.user_repo.find_by_email.assert_not_called()
+    service.login_cache.set.assert_not_called()
 
 
 def test_login_rejects_unknown_user(service):
@@ -115,6 +143,7 @@ def test_reset_password_updates_hash_and_consumes_token(service, monkeypatch):
 
     assert result["success"] is True
     service.user_repo.update_password.assert_called_once_with("ana@example.com", "hash")
+    service.login_cache.delete.assert_called_once_with("login:user:ana@example.com")
     assert token_hash not in service._reset_tokens
 
 

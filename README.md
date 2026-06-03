@@ -41,6 +41,16 @@ flask --app app run
 Abra `http://localhost:5000`. Para ativar recuperacao de senha, configure as variaveis SMTP da Brevo e defina
 `ENABLE_PASSWORD_RESET=true`. Em desenvolvimento local use `SMTP_PORT=587`; no Render gratuito use `SMTP_PORT=2525`.
 
+O cache de login usa Redis quando `REDIS_URL` esta configurada. Sem essa variavel, a aplicacao usa um cache local em
+memoria apenas para desenvolvimento/testes. Para producao, cadastre no provedor:
+
+```bash
+REDIS_URL=rediss://default:SENHA@HOST:PORT
+LOGIN_CACHE_TTL_SECONDS=900
+```
+
+O cache acelera a busca do usuario no login, mas a senha continua sendo validada com bcrypt a cada tentativa.
+
 ## Testes
 
 Os testes usam mocks para Google Sheets e nao dependem da planilha real.

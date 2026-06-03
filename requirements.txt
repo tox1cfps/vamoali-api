@@ -6,4 +6,5 @@ python-dotenv==1.2.2
 gspread==6.2.1
 google-auth==2.53.0
 requests==2.34.2
+redis==8.0.0
 gunicorn==23.0.0
