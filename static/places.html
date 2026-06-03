@@ -59,6 +59,11 @@
         <div>
           <h1>Nossos lugares 🍽️</h1>
         </div>
+        <div class="places-header__actions">
+          <button type="button" class="secondary-button sharing-header-button" onclick="openSharingModal()">
+            Compartilhar lista
+          </button>
+        </div>
       </header>
 
       <div class="places-tabs" id="placesTabs">
@@ -212,8 +217,22 @@
     </div>
   </div>
 
+  <div id="sharingModal" class="modal" onclick="if(event.target===this) closeModal('sharingModal')">
+    <div class="modal__dialog sharing-dialog" role="dialog" aria-modal="true" aria-labelledby="sharingTitle">
+      <div class="modal__header">
+        <div class="modal__emoji">+</div>
+        <div>
+          <h2 id="sharingTitle">Compartilhar lista</h2>
+          <p>Convide alguem para visualizar os lugares com voce.</p>
+        </div>
+        <button type="button" class="modal__close" onclick="closeModal('sharingModal')" aria-label="Fechar">x</button>
+      </div>
+      <div id="sharingContent" class="sharing-content" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

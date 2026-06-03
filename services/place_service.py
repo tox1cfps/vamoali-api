@@ -1,6 +1,7 @@
 import random
 
 from repositories.place_repository import PlaceRepository
+from services.sharing_service import SharingService
 from utils.validation import validate_category, validate_https_url, validate_string
 
 
@@ -9,6 +10,7 @@ class PlaceService:
 
     def __init__(self):
         self.place_repo = PlaceRepository()
+        self.sharing_service = SharingService()
 
     @staticmethod
     def _is_truthy(value):
@@ -27,7 +29,20 @@ class PlaceService:
         return rating_int
 
     def get_places(self, user_id):
-        return self.place_repo.find_all_by_user(user_id)
+        visible_user_ids = self.sharing_service.get_visible_user_ids(user_id)
+        places = self.place_repo.find_all_by_users(visible_user_ids)
+
+        return [
+            {
+                **place,
+                "is_owner": place["user_id"] == user_id,
+                "permissions": {
+                    "can_edit": place["user_id"] == user_id,
+                    "can_delete": place["user_id"] == user_id,
+                },
+            }
+            for place in places
+        ]
 
     def create_place(self, user_id, name, maps_url, category, photo_url=""):
         name = validate_string(name, "Nome do lugar", required=True, max_length=120)
@@ -122,7 +137,7 @@ class PlaceService:
         return self.place_repo.update_place(place_id, {"rating": rating_value})
 
     def get_random_place(self, user_id):
-        places = self.place_repo.find_all_by_user(user_id)
+        places = self.get_places(user_id)
         available_places = [place for place in places if not self._is_truthy(place.get("visited"))]
 
         if not available_places:

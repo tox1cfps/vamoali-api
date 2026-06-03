@@ -9,7 +9,24 @@ from services.place_service import PlaceService
 def service():
     instance = PlaceService.__new__(PlaceService)
     instance.place_repo = Mock()
+    instance.sharing_service = Mock()
     return instance
+
+
+def test_get_places_returns_shared_places_with_permissions(service):
+    service.sharing_service.get_visible_user_ids.return_value = ["user-1", "user-2"]
+    service.place_repo.find_all_by_users.return_value = [
+        {"id": "own", "user_id": "user-1"},
+        {"id": "shared", "user_id": "user-2"},
+    ]
+
+    result = service.get_places("user-1")
+
+    service.place_repo.find_all_by_users.assert_called_once_with(["user-1", "user-2"])
+    assert result[0]["is_owner"] is True
+    assert result[0]["permissions"] == {"can_edit": True, "can_delete": True}
+    assert result[1]["is_owner"] is False
+    assert result[1]["permissions"] == {"can_edit": False, "can_delete": False}
 
 
 def test_create_place_validates_and_forwards_clean_values(service):
@@ -114,13 +131,21 @@ def test_add_rating_rejects_invalid_values(service, rating):
 
 def test_get_random_place_ignores_visited_places(service, monkeypatch):
     available = {"id": "available", "visited": False}
-    service.place_repo.find_all_by_user.return_value = [{"id": "visited", "visited": True}, available]
+    service.sharing_service.get_visible_user_ids.return_value = ["user-1", "user-2"]
+    service.place_repo.find_all_by_users.return_value = [
+        {"id": "visited", "user_id": "user-2", "visited": True},
+        {**available, "user_id": "user-2"},
+    ]
     monkeypatch.setattr("services.place_service.random.choice", lambda places: places[0])
 
-    assert service.get_random_place("user-1") == available
+    result = service.get_random_place("user-1")
+
+    assert result["id"] == "available"
+    assert result["is_owner"] is False
 
 
 def test_get_random_place_rejects_empty_list(service):
-    service.place_repo.find_all_by_user.return_value = []
+    service.sharing_service.get_visible_user_ids.return_value = ["user-1"]
+    service.place_repo.find_all_by_users.return_value = []
     with pytest.raises(LookupError):
         service.get_random_place("user-1")

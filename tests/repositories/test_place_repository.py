@@ -19,6 +19,17 @@ def test_find_methods_filter_rows(monkeypatch):
     assert repo.find_all_by_user("user-2") == [rows[1]]
 
 
+def test_find_all_by_users(monkeypatch):
+    rows = [
+        {"id": "place-1", "user_id": "user-1"},
+        {"id": "place-2", "user_id": "user-2"},
+        {"id": "place-3", "user_id": "user-3"},
+    ]
+    repo, _ = build_repo(monkeypatch, rows)
+
+    assert repo.find_all_by_users(["user-1", "user-2"]) == rows[:2]
+
+
 def test_create_place_appends_raw_row(monkeypatch):
     repo, sheet = build_repo(monkeypatch)
 

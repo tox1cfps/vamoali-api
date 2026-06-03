@@ -3,6 +3,7 @@ from flask import Flask, jsonify, send_from_directory
 from config.settings import ENABLE_PASSWORD_RESET, validate_settings
 from controllers.auth_controller import bp as auth_bp
 from controllers.place_controller import bp as places_bp
+from controllers.sharing_controller import bp as sharing_bp
 
 validate_settings()
 
@@ -12,6 +13,7 @@ app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(places_bp)
+app.register_blueprint(sharing_bp)
 
 
 @app.get("/health")

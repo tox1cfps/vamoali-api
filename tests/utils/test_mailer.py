@@ -3,7 +3,9 @@ from unittest.mock import Mock
 import utils.mailer as mailer
 
 
-def test_build_password_reset_url_preserves_existing_query():
+def test_build_password_reset_url_preserves_existing_query(monkeypatch):
+    monkeypatch.setattr(mailer, "PASSWORD_RESET_URL", "http://localhost:5000/auth.html")
+
     assert mailer.build_password_reset_url("token") == "http://localhost:5000/auth.html?reset_token=token"
 
 

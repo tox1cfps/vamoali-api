@@ -764,7 +764,7 @@ body.dark-mode .theme-toggle__moon {
 .places-header {
   padding: 40px 0 24px;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   max-width: 720px;
   margin: 0 auto;
@@ -774,6 +774,12 @@ body.dark-mode .theme-toggle__moon {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+  margin-top: 48px;
+}
+
+.sharing-header-button {
+  min-height: 42px;
+  padding: 0 16px;
 }
 
 .places-header h1 {
@@ -978,6 +984,12 @@ body.dark-mode .place-card__category {
   font-style: italic;
   font-size: 0.85rem;
   margin-top: 4px;
+}
+
+.place-card__shared {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .place-card__actions {
@@ -1412,6 +1424,180 @@ body.dark-mode .places-footer {
   margin-top: 2px;
 }
 
+.sharing-dialog {
+  width: min(100%, 620px);
+  max-width: 620px;
+  max-height: min(760px, calc(100vh - 40px));
+  overflow-y: auto;
+}
+
+.sharing-content {
+  display: grid;
+  gap: 18px;
+}
+
+.sharing-loading,
+.sharing-empty {
+  padding: 28px 16px;
+  border: 1px dashed rgba(111, 107, 97, 0.28);
+  border-radius: 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.sharing-section {
+  display: grid;
+  gap: 12px;
+}
+
+.sharing-section + .sharing-section {
+  padding-top: 18px;
+  border-top: 1px solid rgba(111, 107, 97, 0.16);
+}
+
+.sharing-section__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.sharing-code-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.sharing-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+
+.sharing-invite {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 111, 97, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 111, 97, 0.06);
+}
+
+.sharing-invite__value {
+  display: grid;
+  gap: 5px;
+}
+
+.sharing-invite__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sharing-invite__code,
+.sharing-invite__link {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.sharing-invite__code {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.sharing-invite__link {
+  font-size: 0.8rem;
+}
+
+.sharing-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sharing-small-button,
+.sharing-danger-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sharing-small-button {
+  border: 1px solid rgba(111, 107, 97, 0.22);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.sharing-danger-button {
+  border: 1px solid rgba(214, 80, 80, 0.3);
+  background: rgba(214, 80, 80, 0.08);
+  color: #b83e3e;
+}
+
+.sharing-members {
+  display: grid;
+  gap: 10px;
+}
+
+.sharing-member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(111, 107, 97, 0.16);
+  border-radius: 14px;
+}
+
+.sharing-member__avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--coral);
+  color: #fff;
+  font-weight: 800;
+}
+
+.sharing-member__info {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sharing-member__name {
+  display: block;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.sharing-member__role {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+body.dark-mode .sharing-loading,
+body.dark-mode .sharing-empty,
+body.dark-mode .sharing-section + .sharing-section,
+body.dark-mode .sharing-member {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.dark-mode .sharing-invite {
+  border-color: rgba(255, 111, 97, 0.28);
+  background: rgba(255, 111, 97, 0.1);
+}
+
+body.dark-mode .sharing-danger-button {
+  color: #ff9a9a;
+}
+
 /* ANIMATIONS */
 @keyframes modalIn {
   from {
@@ -1505,12 +1691,13 @@ body.dark-mode .place-card--with-photo {
   }
 
   .places-header {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     text-align: center;
   }
 
   .places-header__actions {
     justify-content: center;
+    margin-top: 0;
   }
 }
 
@@ -1543,6 +1730,10 @@ body.dark-mode .place-card--with-photo {
   .modal__dialog {
     padding: 24px;
     border-radius: 22px;
+  }
+
+  .sharing-code-form {
+    grid-template-columns: 1fr;
   }
 }
 

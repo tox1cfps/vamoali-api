@@ -9,6 +9,8 @@ let currentFeedbackPlaceId = null;
 let currentFilter = 'all';
 let currentSearch = '';
 let currentResetToken = null;
+let sharingGroup = null;
+let currentSharingInvite = null;
 const visitedOverrides = new Map();
 const favoriteOverrides = new Map();
 const visitedRequestTokens = new Map();
@@ -21,6 +23,7 @@ function init() {
   bindEvents();
   loadPublicConfig();
   openPasswordResetFromLink();
+  captureSharingInviteFromLink();
   applyStoredTheme();
   restoreSession();
 }
@@ -93,6 +96,7 @@ function restoreSession() {
     currentUser = JSON.parse(user);
     syncUserHeader();
     loadPlaces();
+    processPendingSharingInvite();
   } catch (error) {
     logout();
   }
@@ -259,11 +263,282 @@ function logout() {
   places = [];
   currentFeedbackPlaceId = null;
   currentResetToken = null;
+  sharingGroup = null;
+  currentSharingInvite = null;
 
   localStorage.removeItem('token');
   localStorage.removeItem('user');
 
   window.location.href = 'auth.html';
+}
+
+// ===== SHARING =====
+function captureSharingInviteFromLink() {
+  const params = new URLSearchParams(window.location.search);
+  const inviteToken = params.get('invite');
+  if (!inviteToken) return;
+
+  localStorage.setItem('pendingSharingInvite', inviteToken);
+  params.delete('invite');
+  const query = params.toString();
+  window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ''}`);
+}
+
+async function processPendingSharingInvite() {
+  const token = localStorage.getItem('pendingSharingInvite');
+  if (!token || !currentToken) return;
+
+  localStorage.removeItem('pendingSharingInvite');
+  const accepted = await acceptSharingInvite({ token });
+  if (accepted) {
+    showToast('Voce entrou na lista compartilhada!', 'success');
+    await loadPlaces();
+  }
+}
+
+async function openSharingModal() {
+  openModal('sharingModal');
+  renderSharingLoading();
+  await loadSharingGroup();
+}
+
+function renderSharingLoading() {
+  const content = document.getElementById('sharingContent');
+  if (content) content.innerHTML = '<div class="sharing-loading">Carregando compartilhamento...</div>';
+}
+
+async function loadSharingGroup() {
+  try {
+    const response = await fetch(`${API_URL}/sharing/group`, {
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+
+    if (response.status === 404) {
+      sharingGroup = null;
+      renderSharingContent();
+      return;
+    }
+
+    const data = await safeJson(response);
+    if (!response.ok) {
+      renderSharingError(data.message || 'Nao foi possivel carregar o grupo.');
+      return;
+    }
+
+    sharingGroup = data;
+    renderSharingContent();
+  } catch (error) {
+    renderSharingError('Erro de conexao ao carregar o compartilhamento.');
+  }
+}
+
+function renderSharingError(message) {
+  const content = document.getElementById('sharingContent');
+  if (!content) return;
+  content.innerHTML = `<div class="sharing-empty">${escapeHtml(message)}</div>`;
+}
+
+function renderSharingContent() {
+  const content = document.getElementById('sharingContent');
+  if (!content) return;
+
+  const inviteHtml = currentSharingInvite ? renderSharingInvite(currentSharingInvite) : '';
+
+  if (!sharingGroup) {
+    content.innerHTML = `
+      <section class="sharing-section">
+        <h3 class="sharing-section__title">Entrar em uma lista</h3>
+        <form class="sharing-code-form" onsubmit="acceptSharingCode(event)">
+          <input class="field-input sharing-code-input" id="sharingCodeInput" type="text" placeholder="VAMO-ABC123" autocomplete="off" required>
+          <button class="primary-button" type="submit">Entrar</button>
+        </form>
+      </section>
+      <section class="sharing-section">
+        <h3 class="sharing-section__title">Criar sua lista compartilhada</h3>
+        <p class="places-subtitle">Gere um codigo ou link para convidar outra pessoa.</p>
+        <button class="secondary-button" type="button" onclick="createSharingInvite()">Criar convite</button>
+        ${inviteHtml}
+      </section>
+    `;
+    return;
+  }
+
+  const currentMember = sharingGroup.members?.find((member) => member.is_current_user);
+  const isCreator = Boolean(currentMember?.is_creator);
+  const membersHtml = (sharingGroup.members || []).map((member) => {
+    const roleParts = [];
+    if (member.is_current_user) roleParts.push('Voce');
+    if (member.is_creator) roleParts.push('Criador');
+    const removeButton = isCreator && !member.is_current_user
+      ? `<button class="sharing-danger-button" type="button" onclick="removeSharingMember('${escapeJs(member.id)}')">Remover</button>`
+      : '';
+
+    return `
+      <div class="sharing-member">
+        <div class="sharing-member__avatar">${escapeHtml(String(member.username || 'V').charAt(0).toUpperCase())}</div>
+        <div class="sharing-member__info">
+          <span class="sharing-member__name">${escapeHtml(member.username || 'Usuario')}</span>
+          <span class="sharing-member__role">${escapeHtml(roleParts.join(' · ') || 'Membro')}</span>
+        </div>
+        ${removeButton}
+      </div>
+    `;
+  }).join('');
+
+  content.innerHTML = `
+    <section class="sharing-section">
+      <h3 class="sharing-section__title">Membros da lista</h3>
+      <div class="sharing-members">${membersHtml}</div>
+      <div class="sharing-inline-actions">
+        <button class="secondary-button" type="button" onclick="createSharingInvite()">Criar novo convite</button>
+        <button class="sharing-danger-button" type="button" onclick="leaveSharingGroup()">Sair do grupo</button>
+      </div>
+      ${inviteHtml}
+    </section>
+  `;
+}
+
+function renderSharingInvite(invite) {
+  const shareUrl = buildSharingUrl(invite.token);
+  const expiresAt = invite.expires_at ? new Date(invite.expires_at).toLocaleString('pt-BR') : '';
+
+  return `
+    <div class="sharing-invite">
+      <div class="sharing-invite__value">
+        <span class="sharing-invite__label">Codigo</span>
+        <span class="sharing-invite__code">${escapeHtml(invite.code)}</span>
+      </div>
+      <div class="sharing-invite__value">
+        <span class="sharing-invite__label">Link</span>
+        <span class="sharing-invite__link">${escapeHtml(shareUrl)}</span>
+      </div>
+      ${expiresAt ? `<span class="sharing-member__role">Expira em ${escapeHtml(expiresAt)}</span>` : ''}
+      <div class="sharing-inline-actions">
+        <button class="sharing-small-button" type="button" onclick="copySharingValue('${escapeJs(invite.code)}', 'Codigo copiado!')">Copiar codigo</button>
+        <button class="sharing-small-button" type="button" onclick="copySharingValue('${escapeJs(shareUrl)}', 'Link copiado!')">Copiar link</button>
+        <button class="sharing-danger-button" type="button" onclick="revokeCurrentSharingInvite()">Revogar</button>
+      </div>
+    </div>
+  `;
+}
+
+function buildSharingUrl(token) {
+  return `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`;
+}
+
+async function createSharingInvite() {
+  try {
+    const response = await fetch(`${API_URL}/sharing/invites`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      showToast(data.message || 'Nao foi possivel criar o convite.', 'error');
+      return;
+    }
+
+    currentSharingInvite = data;
+    await loadSharingGroup();
+    showToast('Convite criado!', 'success');
+  } catch (error) {
+    showToast('Erro ao criar convite.', 'error');
+  }
+}
+
+async function acceptSharingCode(event) {
+  event.preventDefault();
+  const code = document.getElementById('sharingCodeInput')?.value.trim();
+  if (!code) return;
+
+  if (await acceptSharingInvite({ code })) {
+    showToast('Voce entrou na lista compartilhada!', 'success');
+    currentSharingInvite = null;
+    await Promise.all([loadSharingGroup(), loadPlaces()]);
+  }
+}
+
+async function acceptSharingInvite(payload) {
+  try {
+    const response = await fetch(`${API_URL}/sharing/invites/accept`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await safeJson(response);
+
+    if (!response.ok) {
+      showToast(data.message || 'Nao foi possivel aceitar o convite.', 'error');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    showToast('Erro ao aceitar convite.', 'error');
+    return false;
+  }
+}
+
+async function copySharingValue(value, message) {
+  try {
+    await navigator.clipboard.writeText(value);
+    showToast(message, 'success');
+  } catch (error) {
+    showToast('Nao foi possivel copiar.', 'error');
+  }
+}
+
+async function revokeCurrentSharingInvite() {
+  if (!currentSharingInvite) return;
+  try {
+    const response = await fetch(`${API_URL}/sharing/invites/${encodeURIComponent(currentSharingInvite.id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await safeJson(response);
+    if (!response.ok) {
+      showToast(data.message || 'Nao foi possivel revogar o convite.', 'error');
+      return;
+    }
+    currentSharingInvite = null;
+    renderSharingContent();
+    showToast('Convite revogado.', 'success');
+  } catch (error) {
+    showToast('Erro ao revogar convite.', 'error');
+  }
+}
+
+async function removeSharingMember(memberUserId) {
+  if (!window.confirm('Remover este membro da lista compartilhada?')) return;
+  await deleteSharingMember(memberUserId);
+}
+
+async function leaveSharingGroup() {
+  if (!currentUser?.id || !window.confirm('Sair da lista compartilhada?')) return;
+  await deleteSharingMember(currentUser.id);
+}
+
+async function deleteSharingMember(memberUserId) {
+  try {
+    const response = await fetch(`${API_URL}/sharing/group/members/${encodeURIComponent(memberUserId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${currentToken}` }
+    });
+    const data = await safeJson(response);
+    if (!response.ok) {
+      showToast(data.message || 'Nao foi possivel atualizar o grupo.', 'error');
+      return;
+    }
+
+    currentSharingInvite = null;
+    await Promise.all([loadSharingGroup(), loadPlaces()]);
+    showToast(memberUserId === currentUser?.id ? 'Voce saiu do grupo.' : 'Membro removido.', 'success');
+  } catch (error) {
+    showToast('Erro ao atualizar o grupo.', 'error');
+  }
 }
 
 // ===== PLACES =====
@@ -364,6 +639,10 @@ async function handleAddPlace(event) {
 async function markAsVisited(placeId, button) {
   const place = getPlaceById(placeId);
   if (!place) return;
+  if (!canEditPlace(place)) {
+    showToast('Somente quem adicionou este lugar pode altera-lo.', 'error');
+    return;
+  }
 
   const previousVisited = normalizeVisited(place.visited);
   const nextVisited = !previousVisited;
@@ -409,6 +688,10 @@ async function markAsVisited(placeId, button) {
 async function toggleFavorite(placeId) {
   const place = getPlaceById(placeId);
   if (!place) return;
+  if (!canEditPlace(place)) {
+    showToast('Somente quem adicionou este lugar pode altera-lo.', 'error');
+    return;
+  }
 
   const previousFavorite = normalizeBoolean(place.favorited);
   const nextFavorite = !previousFavorite;
@@ -505,6 +788,12 @@ let pendingDeleteId = null;
 let pendingDeleteButton = null;
 
 function deletePlace(placeId, button) {
+  const place = getPlaceById(placeId);
+  if (!place || !canDeletePlace(place)) {
+    showToast('Somente quem adicionou este lugar pode exclui-lo.', 'error');
+    return;
+  }
+
   pendingDeleteId = placeId;
   pendingDeleteButton = button;
   openModal('confirmDeleteModal');
@@ -538,10 +827,15 @@ function deletePlace(placeId, button) {
 
 // ===== FEEDBACK =====
 function openFeedbackModal(placeId) {
+  const place = getPlaceById(placeId);
+  if (!place || !canEditPlace(place)) {
+    showToast('Somente quem adicionou este lugar pode altera-lo.', 'error');
+    return;
+  }
+
   currentFeedbackPlaceId = placeId;
   clearFormErrors(['feedbackTextError', 'feedbackRatingError', 'feedbackFormError']);
 
-  const place = getPlaceById(placeId);
   const feedbackInput = document.getElementById('feedbackText');
   const feedbackRatingInput = document.getElementById('feedbackRatingValue');
   if (feedbackInput) {
@@ -803,6 +1097,17 @@ function renderPlaceCard(place) {
   const ratingBadge = ratingValue ? `<span class="place-card__rating">⭐ ${ratingValue}</span>` : '';
   const favoriteLabel = isFavorite ? '♥' : '♡';
   const favoriteClass = isFavorite ? 'is-favorite' : '';
+  const canEdit = canEditPlace(place);
+  const canDelete = canDeletePlace(place);
+  const sharedLabel = canEdit ? '' : '<span class="place-card__shared">Adicionado por outro membro</span>';
+  const actionsHtml = canEdit || canDelete
+    ? `
+      ${canEdit ? `<button type="button" class="action-button action-button--favorite ${favoriteClass}" onclick="toggleFavorite('${safeId}')" title="Favoritar lugar">${favoriteLabel}</button>` : ''}
+      ${canEdit ? `<button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>` : ''}
+      ${canEdit ? `<button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')"><img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt=""></button>` : ''}
+      ${canDelete ? `<button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar"><img class="action-icon action-icon--delete icon-tint-dark" src="garbage-trash-svgrepo-com.svg" alt=""></button>` : ''}
+    `
+    : '';
 
   if (photoUrl) {
     return `
@@ -813,6 +1118,7 @@ function renderPlaceCard(place) {
           <div class="place-card__body">
             <h3 class="place-card__name">${name}</h3>
             ${categoryBadge}
+            ${sharedLabel}
             <div class="place-card__meta">
               <span class="place-card__badge ${badgeClass}">${badgeText}</span>
               ${ratingBadge}
@@ -821,14 +1127,7 @@ function renderPlaceCard(place) {
             ${feedback}
           </div>
           <div class="place-card__actions">
-            <button type="button" class="action-button action-button--favorite ${favoriteClass}" onclick="toggleFavorite('${safeId}')" title="Favoritar lugar">${favoriteLabel}</button>
-            <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
-            <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
-              <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
-            </button>
-            <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">
-              <img class="action-icon action-icon--delete icon-tint-dark" src="garbage-trash-svgrepo-com.svg" alt="">
-            </button>
+            ${actionsHtml}
           </div>
         </div>
       </article>
@@ -841,6 +1140,7 @@ function renderPlaceCard(place) {
       <div class="place-card__body">
         <h3 class="place-card__name">${name}</h3>
         ${categoryBadge}
+        ${sharedLabel}
         <div class="place-card__meta">
           <span class="place-card__badge ${badgeClass}">${badgeText}</span>
           ${ratingBadge}
@@ -849,14 +1149,7 @@ function renderPlaceCard(place) {
         ${feedback}
       </div>
       <div class="place-card__actions">
-        <button type="button" class="action-button action-button--favorite ${favoriteClass}" onclick="toggleFavorite('${safeId}')" title="Favoritar lugar">${favoriteLabel}</button>
-        <button type="button" class="action-button action-button--visited ${visitedClass}" onclick="markAsVisited('${safeId}', this)" title="Marcar visitado">${visitedLabel}</button>
-        <button type="button" class="action-button action-button--feedback" ${feedbackDisabledAttr} onclick="openFeedbackModal('${safeId}')">
-          <img class="action-icon action-icon--feedback icon-tint-dark" src="feedback-svgrepo-com.svg" alt="">
-        </button>
-        <button type="button" class="action-button action-button--delete" onclick="deletePlace('${safeId}', this)" title="Excluir lugar">
-          <img class="action-icon action-icon--delete icon-tint-dark" src="garbage-trash-svgrepo-com.svg" alt="">
-        </button>
+        ${actionsHtml}
       </div>
     </article>
   `;
@@ -963,6 +1256,20 @@ function hideModal(modalId) {
 // ===== HELPERS =====
 function getPlaceById(placeId) {
   return places.find((place) => String(place.id) === String(placeId));
+}
+
+function canEditPlace(place) {
+  if (place?.permissions && typeof place.permissions.can_edit === 'boolean') {
+    return place.permissions.can_edit;
+  }
+  return place?.is_owner !== false && String(place?.user_id || '') === String(currentUser?.id || '');
+}
+
+function canDeletePlace(place) {
+  if (place?.permissions && typeof place.permissions.can_delete === 'boolean') {
+    return place.permissions.can_delete;
+  }
+  return canEditPlace(place);
 }
 
 function normalizeVisited(value) {

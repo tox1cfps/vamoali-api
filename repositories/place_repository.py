@@ -48,6 +48,11 @@ class PlaceRepository:
 
         return ids
 
+    def find_all_by_users(self, user_ids):
+        allowed_ids = set(user_ids)
+
+        return [row for row in self._get_all_rows() if row["user_id"] in allowed_ids]
+
     def create_place(self, user_id, name, maps_url, category, photo_url=""):
         id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
