@@ -48,3 +48,11 @@ def send_password_reset_email(recipient, token):
         f"Use este link nos proximos minutos:\n{reset_url}\n\n"
         "Se voce nao solicitou a troca, ignore este email.",
     )
+
+
+def send_welcome_email(recipient, username):
+    send_email(
+        recipient,
+        "Boas-vindas ao VamoAli",
+        f"Ola, {username}!\n\nSua conta no VamoAli foi criada. Comece adicionando um lugar para conhecer.",
+    )

@@ -15,8 +15,10 @@ from workers import backup_database, email_worker, schedule_unvisited_reminders,
 def test_email_worker_delivers_supported_messages(monkeypatch):
     send_email = Mock()
     send_reset = Mock()
+    send_welcome = Mock()
     monkeypatch.setattr(email_worker, "send_email", send_email)
     monkeypatch.setattr(email_worker, "send_password_reset_email", send_reset)
+    monkeypatch.setattr(email_worker, "send_welcome_email", send_welcome)
 
     email_worker.deliver({"kind": "welcome", "recipient": "a@example.com", "payload": {"username": "Ana"}})
     email_worker.deliver(
@@ -28,7 +30,8 @@ def test_email_worker_delivers_supported_messages(monkeypatch):
     )
     email_worker.deliver({"kind": "password_reset", "recipient": "a@example.com", "payload": {"token": "raw"}})
 
-    assert send_email.call_count == 2
+    assert send_email.call_count == 1
+    send_welcome.assert_called_once_with("a@example.com", "Ana")
     send_reset.assert_called_once_with("a@example.com", "raw")
 
 
@@ -40,12 +43,20 @@ def test_email_worker_processes_success_failure_and_empty(monkeypatch):
         None,
     ]
     monkeypatch.setattr(email_worker, "send_email", Mock())
+    monkeypatch.setattr(email_worker, "send_welcome_email", Mock())
 
     assert email_worker.process_one(repo) is True
     repo.mark_sent.assert_called_once_with("1")
     assert email_worker.process_one(repo) is True
     repo.mark_failed.assert_called_once()
     assert email_worker.process_one(repo) is False
+
+
+def test_email_worker_processes_pending_batch(monkeypatch):
+    process_one = Mock(side_effect=[True, True, False])
+    monkeypatch.setattr(email_worker, "process_one", process_one)
+
+    assert email_worker.process_pending(10) == 2
 
 
 def test_schedule_unvisited_reminders(monkeypatch):
@@ -136,3 +147,4 @@ def test_import_sheets_to_postgres(monkeypatch):
     assert counts["group_members"] == 1
     assert counts["group_invites"] == 1
     assert import_sheets_to_postgres.import_all()["users"] == 0
+    assert import_sheets_to_postgres.migration_status()["matches"] is True

@@ -1,0 +1,45 @@
+name: Scheduled Jobs
+
+on:
+  schedule:
+    - cron: "15 12 * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run
+        required: true
+        default: process-emails
+        type: choice
+        options:
+          - process-emails
+          - daily-maintenance
+
+permissions:
+  contents: read
+
+jobs:
+  process-emails:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.job == 'process-emails' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process queued emails
+        env:
+          APP_URL: ${{ secrets.VAMOALI_APP_URL }}
+          ADMIN_JOB_SECRET: ${{ secrets.ADMIN_JOB_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 --request POST \
+            --header "X-Admin-Job-Secret: $ADMIN_JOB_SECRET" \
+            "$APP_URL/internal/jobs/process-emails"
+
+  daily-maintenance:
+    if: ${{ github.event_name == 'schedule' && github.event.schedule == '15 12 * * *' || github.event_name == 'workflow_dispatch' && inputs.job == 'daily-maintenance' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Schedule reminders, sync report, and send backup
+        env:
+          APP_URL: ${{ secrets.VAMOALI_APP_URL }}
+          ADMIN_JOB_SECRET: ${{ secrets.ADMIN_JOB_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 --request POST \
+            --header "X-Admin-Job-Secret: $ADMIN_JOB_SECRET" \
+            "$APP_URL/internal/jobs/daily-maintenance"

@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import func, select
+
 from config.settings import GROUP_INVITES_SHEET, GROUP_MEMBERS_SHEET, GROUPS_SHEET, PLACES_SHEET, USERS_SHEET
 from database import session_scope
 from models import Group, GroupInvite, GroupMember, Place, User
@@ -25,6 +27,25 @@ def as_rating(value):
 
 def rows(sheet_name):
     return get_worksheet(sheet_name).get_all_records()
+
+
+def migration_status():
+    sheet_counts = {
+        "users": len(rows(USERS_SHEET)),
+        "places": len(rows(PLACES_SHEET)),
+        "groups": len(rows(GROUPS_SHEET)),
+        "group_members": len(rows(GROUP_MEMBERS_SHEET)),
+        "group_invites": len(rows(GROUP_INVITES_SHEET)),
+    }
+    with session_scope() as session:
+        postgres_counts = {
+            "users": session.scalar(select(func.count()).select_from(User)),
+            "places": session.scalar(select(func.count()).select_from(Place)),
+            "groups": session.scalar(select(func.count()).select_from(Group)),
+            "group_members": session.scalar(select(func.count()).select_from(GroupMember)),
+            "group_invites": session.scalar(select(func.count()).select_from(GroupInvite)),
+        }
+    return {"sheets": sheet_counts, "postgres": postgres_counts, "matches": sheet_counts == postgres_counts}
 
 
 def import_all():

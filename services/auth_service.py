@@ -17,6 +17,7 @@ from repositories.email_job_repository import EmailJobRepository
 from repositories.password_reset_repository import PasswordResetRepository
 from repositories.user_repository import UserRepository
 from utils.cache import login_cache
+from utils.mailer import send_password_reset_email, send_welcome_email
 from utils.validation import normalize_email, validate_string
 
 
@@ -85,8 +86,12 @@ class AuthService:
         if user is None:
             return self.RESET_REQUEST_RESPONSE
 
-        token, _ = self._create_reset_token(user["id"])
-        self.email_job_repo.enqueue("password_reset", email, {"token": token})
+        token, token_hash = self._create_reset_token(user["id"])
+        try:
+            send_password_reset_email(email, token)
+        except Exception as exc:
+            self.reset_repo.delete(token_hash)
+            raise RuntimeError("Nao foi possivel enviar o email de redefinicao") from exc
 
         return self.RESET_REQUEST_RESPONSE
 
@@ -132,7 +137,10 @@ class AuthService:
         self._validate_password_strength(password)
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         user = self.user_repo.create_user(username, email, password_hash)
-        self.email_job_repo.enqueue("welcome", email, {"username": username}, f"welcome:{user['id']}")
+        try:
+            send_welcome_email(email, username)
+        except Exception:
+            self.email_job_repo.enqueue("welcome", email, {"username": username}, f"welcome:{user['id']}")
         self.login_cache.delete(self._login_cache_key(email))
         token = self._generate_token(user["id"])
         return {"user": user, "token": token}

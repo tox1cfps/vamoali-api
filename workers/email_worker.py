@@ -3,18 +3,13 @@ import time
 
 from config.settings import EMAIL_WORKER_POLL_SECONDS
 from repositories.email_job_repository import EmailJobRepository
-from utils.mailer import send_email, send_password_reset_email
+from utils.mailer import send_email, send_password_reset_email, send_welcome_email
 
 
 def deliver(job):
     payload = job["payload"]
     if job["kind"] == "welcome":
-        send_email(
-            job["recipient"],
-            "Boas-vindas ao VamoAli",
-            f"Ola, {payload['username']}!\n\n"
-            "Sua conta no VamoAli foi criada. Comece adicionando um lugar para conhecer.",
-        )
+        send_welcome_email(job["recipient"], payload["username"])
     elif job["kind"] == "unvisited_reminder":
         send_email(
             job["recipient"],
@@ -40,6 +35,13 @@ def process_one(repository=None):
     else:
         repository.mark_sent(job["id"])
     return True
+
+
+def process_pending(limit):
+    processed = 0
+    while processed < limit and process_one():
+        processed += 1
+    return processed
 
 
 def main():

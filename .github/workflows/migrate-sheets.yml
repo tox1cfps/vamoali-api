@@ -1,0 +1,35 @@
+name: Migrate Sheets to PostgreSQL
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type MIGRATE to execute the idempotent import
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: ${{ inputs.confirmation == 'MIGRATE' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Import Sheets data
+        env:
+          APP_URL: ${{ secrets.VAMOALI_APP_URL }}
+          ADMIN_JOB_SECRET: ${{ secrets.ADMIN_JOB_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 \
+            --request POST \
+            --header "X-Admin-Job-Secret: $ADMIN_JOB_SECRET" \
+            "$APP_URL/internal/jobs/migrate-sheets"
+
+      - name: Validate migration counts
+        env:
+          APP_URL: ${{ secrets.VAMOALI_APP_URL }}
+          ADMIN_JOB_SECRET: ${{ secrets.ADMIN_JOB_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 \
+            --header "X-Admin-Job-Secret: $ADMIN_JOB_SECRET" \
+            "$APP_URL/internal/jobs/migration-status"

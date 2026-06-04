@@ -80,6 +80,21 @@ um banco de homologacao e valide as contagens antes da troca final. O backup com
 com `BACKUP_ENCRYPTION_KEY` e os envia para `BACKUP_EMAIL`; o relatorio Sheets nao inclui emails, hashes, tokens ou IDs
 de usuarios.
 
+No plano gratuito do Render, somente o Web Service e o PostgreSQL sao provisionados. Boas-vindas e reset sao enviados
+imediatamente pelo Web Service. O workflow `.github/workflows/scheduled-jobs.yml` chama um endpoint administrativo
+protegido diariamente para enviar lembretes, reprocessar emails pendentes, atualizar o relatorio e gerar o backup.
+Configure no GitHub Actions:
+
+```text
+VAMOALI_APP_URL=https://vamoali-app.onrender.com
+ADMIN_JOB_SECRET=<mesmo valor configurado no Render>
+```
+
+A migracao real pode ser executada uma unica vez pelo endpoint protegido `POST /internal/jobs/migrate-sheets`.
+Antes disso, configure no Web Service `SHEET_NAME`, `FERNET_KEY` e `GOOGLE_CREDENTIALS_JSON`. Consulte
+`GET /internal/jobs/migration-status` para comparar automaticamente as contagens. O workflow manual
+`.github/workflows/migrate-sheets.yml` executa ambos ao receber a confirmacao `MIGRATE`.
+
 ## Testes
 
 Os testes usam mocks para Google Sheets e nao dependem da planilha real.

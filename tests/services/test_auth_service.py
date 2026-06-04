@@ -22,13 +22,31 @@ def test_register_normalizes_email_hashes_password_and_returns_token(service, mo
     monkeypatch.setattr("services.auth_service.bcrypt.hashpw", lambda password, salt: b"hash")
     monkeypatch.setattr("services.auth_service.bcrypt.gensalt", lambda: b"salt")
     monkeypatch.setattr(service, "_generate_token", lambda user_id: "jwt")
+    send_welcome = Mock()
+    monkeypatch.setattr("services.auth_service.send_welcome_email", send_welcome)
 
     result = service.register_user(" Ana ", " ANA@EXAMPLE.COM ", "Strong1!")
 
     assert result == {"user": {"id": "user-1", "username": "Ana"}, "token": "jwt"}
     service.user_repo.find_by_email.assert_called_once_with("ana@example.com")
     service.user_repo.create_user.assert_called_once_with("Ana", "ana@example.com", "hash")
-    service.email_job_repo.enqueue.assert_called_once()
+    send_welcome.assert_called_once_with("ana@example.com", "Ana")
+    service.email_job_repo.enqueue.assert_not_called()
+
+
+def test_register_queues_welcome_when_delivery_fails(service, monkeypatch):
+    service.user_repo.find_by_email.return_value = None
+    service.user_repo.create_user.return_value = {"id": "user-1", "username": "Ana"}
+    monkeypatch.setattr("services.auth_service.bcrypt.hashpw", lambda password, salt: b"hash")
+    monkeypatch.setattr("services.auth_service.bcrypt.gensalt", lambda: b"salt")
+    monkeypatch.setattr(service, "_generate_token", lambda user_id: "jwt")
+    monkeypatch.setattr("services.auth_service.send_welcome_email", Mock(side_effect=RuntimeError("smtp")))
+
+    service.register_user("Ana", "ana@example.com", "Strong1!")
+
+    service.email_job_repo.enqueue.assert_called_once_with(
+        "welcome", "ana@example.com", {"username": "Ana"}, "welcome:user-1"
+    )
 
 
 def test_register_rejects_duplicate_email(service):
@@ -97,22 +115,33 @@ def test_generate_and_decode_token(service):
     assert payload["jti"]
 
 
-def test_request_reset_queues_raw_token_but_persists_only_hash(service, monkeypatch):
+def test_request_reset_sends_raw_token_but_persists_only_hash(service, monkeypatch):
     service.user_repo.find_by_email.return_value = {"id": "user-1", "email": "ana@example.com"}
     monkeypatch.setattr("services.auth_service.secrets.token_urlsafe", lambda size: "raw-token")
+    send_email = Mock()
+    monkeypatch.setattr("services.auth_service.send_password_reset_email", send_email)
 
     result = service.request_reset_password(" ANA@example.com ")
 
     assert result == AuthService.RESET_REQUEST_RESPONSE
     service.reset_repo.create.assert_called_once()
     assert service.reset_repo.create.call_args.args[0] != "raw-token"
-    service.email_job_repo.enqueue.assert_called_once_with("password_reset", "ana@example.com", {"token": "raw-token"})
+    send_email.assert_called_once_with("ana@example.com", "raw-token")
 
 
 def test_request_reset_returns_same_response_for_unknown_email_without_sending(service, monkeypatch):
     service.user_repo.find_by_email.return_value = None
     assert service.request_reset_password("unknown@example.com") == AuthService.RESET_REQUEST_RESPONSE
-    service.email_job_repo.enqueue.assert_not_called()
+
+
+def test_request_reset_deletes_token_when_delivery_fails(service, monkeypatch):
+    service.user_repo.find_by_email.return_value = {"id": "user-1", "email": "ana@example.com"}
+    monkeypatch.setattr("services.auth_service.send_password_reset_email", Mock(side_effect=RuntimeError("smtp")))
+
+    with pytest.raises(RuntimeError, match="Nao foi possivel"):
+        service.request_reset_password("ana@example.com")
+
+    service.reset_repo.delete.assert_called_once()
 
 
 def test_reset_password_updates_hash_and_consumes_token(service, monkeypatch):

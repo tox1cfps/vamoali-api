@@ -37,6 +37,11 @@ class PasswordResetRepository:
             token.consumed_at = utcnow()
             return True
 
+    def delete(self, token_hash):
+        with session_scope() as session:
+            result = session.execute(delete(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash))
+            return result.rowcount > 0
+
     def cleanup_expired(self):
         with session_scope() as session:
             result = session.execute(delete(PasswordResetToken).where(PasswordResetToken.expires_at <= utcnow()))

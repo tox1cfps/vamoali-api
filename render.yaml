@@ -1,109 +1,34 @@
 databases:
-  - name: vamoali-postgres
+  - name: vamoali
     databaseName: vamoali
     user: vamoali
     ipAllowList: []
 
-envVarGroups:
-  - name: vamoali-runtime
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.11
-  - name: vamoali-email-payload
-    envVars:
-      - key: EMAIL_PAYLOAD_ENCRYPTION_KEY
-        generateValue: true
-
 services:
   - type: web
-    name: vamoali-api
+    name: vamoali-app
     runtime: python
     buildCommand: pip install -r requirements.txt
     preDeployCommand: alembic upgrade head
     startCommand: gunicorn --bind 0.0.0.0:$PORT --access-logfile=- app:app
     healthCheckPath: /health
     envVars:
-      - fromGroup: vamoali-runtime
-      - fromGroup: vamoali-email-payload
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: DATABASE_URL
         fromDatabase:
-          name: vamoali-postgres
+          name: vamoali
           property: connectionString
       - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_PAYLOAD_ENCRYPTION_KEY
+        generateValue: true
+      - key: ADMIN_JOB_SECRET
         generateValue: true
       - key: ENABLE_PASSWORD_RESET
         value: "true"
       - key: PASSWORD_RESET_URL
         sync: false
-
-  - type: worker
-    name: vamoali-email-worker
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m workers.email_worker
-    envVars:
-      - fromGroup: vamoali-runtime
-      - fromGroup: vamoali-email-payload
-      - key: DATABASE_URL
-        fromDatabase:
-          name: vamoali-postgres
-          property: connectionString
-      - key: SMTP_HOST
-        value: smtp-relay.brevo.com
-      - key: SMTP_PORT
-        value: "2525"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM_EMAIL
-        sync: false
-      - key: SMTP_FROM_NAME
-        value: VamoAli
-
-  - type: cron
-    name: vamoali-reminders
-    runtime: python
-    schedule: "0 12 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m workers.schedule_unvisited_reminders
-    envVars:
-      - fromGroup: vamoali-runtime
-      - fromGroup: vamoali-email-payload
-      - key: DATABASE_URL
-        fromDatabase:
-          name: vamoali-postgres
-          property: connectionString
-
-  - type: cron
-    name: vamoali-sheets-report
-    runtime: python
-    schedule: "15 12 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m workers.sync_sheets_report
-    envVars:
-      - fromGroup: vamoali-runtime
-      - key: DATABASE_URL
-        fromDatabase:
-          name: vamoali-postgres
-          property: connectionString
-      - key: GOOGLE_CREDENTIALS_JSON
-        sync: false
-      - key: REPORT_SHEET_NAME
-        sync: false
-
-  - type: cron
-    name: vamoali-csv-backup
-    runtime: python
-    schedule: "30 12 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m workers.backup_database
-    envVars:
-      - fromGroup: vamoali-runtime
-      - key: DATABASE_URL
-        fromDatabase:
-          name: vamoali-postgres
-          property: connectionString
       - key: SMTP_HOST
         value: smtp-relay.brevo.com
       - key: SMTP_PORT
@@ -120,3 +45,11 @@ services:
         sync: false
       - key: BACKUP_ENCRYPTION_KEY
         generateValue: true
+      - key: SHEET_NAME
+        sync: false
+      - key: REPORT_SHEET_NAME
+        sync: false
+      - key: FERNET_KEY
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false

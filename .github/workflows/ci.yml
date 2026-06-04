@@ -17,6 +17,7 @@ jobs:
       FERNET_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
       GOOGLE_CREDENTIALS_JSON: '{"type":"service_account"}'
       ENABLE_PASSWORD_RESET: "false"
+      DATABASE_URL: sqlite:///ci-vamoali.db
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

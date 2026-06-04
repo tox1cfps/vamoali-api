@@ -25,3 +25,13 @@ def test_send_password_reset_email_uses_tls_and_smtp_credentials(monkeypatch):
     message = smtp.send_message.call_args.args[0]
     assert message["To"] == "ana@example.com"
     assert "reset_token=raw-token" in message.get_content()
+
+
+def test_send_welcome_email(monkeypatch):
+    send_email = Mock()
+    monkeypatch.setattr(mailer, "send_email", send_email)
+
+    mailer.send_welcome_email("ana@example.com", "Ana")
+
+    assert send_email.call_args.args[0] == "ana@example.com"
+    assert "Ana" in send_email.call_args.args[2]

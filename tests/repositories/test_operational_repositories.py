@@ -18,6 +18,9 @@ def test_password_reset_repository_lifecycle():
     assert repo.find_valid("token-hash") is None
     assert repo.consume("missing") is False
 
+    repo.create("delete-me", user["id"], expires_at.isoformat())
+    assert repo.delete("delete-me") is True
+
 
 def test_password_reset_repository_cleans_expired_tokens():
     user = UserRepository().create_user("Ana", "ana@example.com", "hash")
