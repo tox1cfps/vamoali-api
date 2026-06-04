@@ -1,5 +1,8 @@
+import hashlib
+import secrets
 from datetime import datetime, timezone
 
+import bcrypt
 from sqlalchemy import func, select
 
 from config.settings import GROUP_INVITES_SHEET, GROUP_MEMBERS_SHEET, GROUPS_SHEET, PLACES_SHEET, USERS_SHEET
@@ -22,7 +25,7 @@ def as_bool(value):
 
 
 def as_rating(value):
-    return int(value) if str(value).strip() else None
+    return int(value) if value not in (None, "") and str(value).strip() else None
 
 
 def rows(sheet_name):
@@ -30,9 +33,13 @@ def rows(sheet_name):
 
 
 def migration_status():
+    user_rows = rows(USERS_SHEET)
+    place_rows = rows(PLACES_SHEET)
+    sheet_user_ids = {row["id"] for row in user_rows}
+    recovered_user_ids = {row["user_id"] for row in place_rows if row["user_id"] not in sheet_user_ids}
     sheet_counts = {
-        "users": len(rows(USERS_SHEET)),
-        "places": len(rows(PLACES_SHEET)),
+        "users": len(user_rows),
+        "places": len(place_rows),
         "groups": len(rows(GROUPS_SHEET)),
         "group_members": len(rows(GROUP_MEMBERS_SHEET)),
         "group_invites": len(rows(GROUP_INVITES_SHEET)),
@@ -45,14 +52,25 @@ def migration_status():
             "group_members": session.scalar(select(func.count()).select_from(GroupMember)),
             "group_invites": session.scalar(select(func.count()).select_from(GroupInvite)),
         }
-    return {"sheets": sheet_counts, "postgres": postgres_counts, "matches": sheet_counts == postgres_counts}
+    expected_counts = {**sheet_counts, "users": sheet_counts["users"] + len(recovered_user_ids)}
+    return {
+        "sheets": sheet_counts,
+        "postgres": postgres_counts,
+        "recovered_users": len(recovered_user_ids),
+        "matches": expected_counts == postgres_counts,
+    }
 
 
 def import_all():
     counts = {}
+    user_rows = rows(USERS_SHEET)
+    place_rows = rows(PLACES_SHEET)
+    sheet_user_ids = {row["id"] for row in user_rows}
+    recovered_user_ids = {row["user_id"] for row in place_rows if row["user_id"] not in sheet_user_ids}
+
     with session_scope() as session:
         counts["users"] = 0
-        for row in rows(USERS_SHEET):
+        for row in user_rows:
             if session.get(User, row["id"]):
                 continue
             session.add(
@@ -65,10 +83,28 @@ def import_all():
                 )
             )
             counts["users"] += 1
+
+        counts["recovered_users"] = 0
+        for user_id in recovered_user_ids:
+            if session.get(User, user_id):
+                continue
+            email_suffix = hashlib.sha256(user_id.encode()).hexdigest()[:16]
+            password_hash = bcrypt.hashpw(secrets.token_urlsafe(32).encode(), bcrypt.gensalt()).decode()
+            session.add(
+                User(
+                    id=user_id,
+                    username="Usuario recuperado",
+                    email=f"recovered+{email_suffix}@internal.invalid",
+                    password_hash=password_hash,
+                    created_at=datetime.now(timezone.utc),
+                    unvisited_reminders_enabled=False,
+                )
+            )
+            counts["recovered_users"] += 1
         session.flush()
 
         counts["places"] = 0
-        for row in rows(PLACES_SHEET):
+        for row in place_rows:
             if session.get(Place, row["id"]):
                 continue
             session.add(

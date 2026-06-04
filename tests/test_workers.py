@@ -142,9 +142,39 @@ def test_import_sheets_to_postgres(monkeypatch):
     counts = import_sheets_to_postgres.import_all()
 
     assert counts["users"] == 1
+    assert counts["recovered_users"] == 0
     assert counts["places"] == 1
     assert counts["groups"] == 1
     assert counts["group_members"] == 1
     assert counts["group_invites"] == 1
     assert import_sheets_to_postgres.import_all()["users"] == 0
     assert import_sheets_to_postgres.migration_status()["matches"] is True
+
+
+def test_import_sheets_preserves_orphan_places_with_recovered_user(monkeypatch):
+    now = datetime.now(timezone.utc).isoformat()
+    data = {
+        "users": [],
+        "places": [
+            {
+                "id": "place-1",
+                "user_id": "missing-user",
+                "name": "Bistro",
+                "maps_url": "https://maps.example/x",
+                "category": "Restaurante",
+                "created_at": now,
+                "updated_at": now,
+            }
+        ],
+        "groups": [],
+        "group_members": [],
+        "group_invites": [],
+    }
+    monkeypatch.setattr(import_sheets_to_postgres, "rows", lambda name: data[name])
+
+    counts = import_sheets_to_postgres.import_all()
+    status = import_sheets_to_postgres.migration_status()
+
+    assert counts["recovered_users"] == 1
+    assert status["recovered_users"] == 1
+    assert status["matches"] is True
