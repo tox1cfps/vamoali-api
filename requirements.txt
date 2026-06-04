@@ -11,4 +11,4 @@ redis==8.0.0
 gunicorn==23.0.0
 SQLAlchemy==2.0.41
 alembic==1.16.1
-psycopg[binary]==3.2.9
+psycopg[binary]==3.3.2
