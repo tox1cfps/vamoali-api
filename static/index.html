@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VamoAli 🍽️</title>
-  <meta http-equiv="refresh" content="0; url=auth.html">
+  <script>
+    const hasSession = localStorage.getItem('token') && localStorage.getItem('user');
+    window.location.replace(hasSession ? 'places.html' : 'auth.html');
+  </script>
 </head>
 <body>
-  <p>Redirecionando para <a href="auth.html">auth.html</a>...</p>
+  <p>Redirecionando...</p>
 </body>
 </html>

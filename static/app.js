@@ -78,16 +78,20 @@ function bindEvents() {
 }
 
 function restoreSession() {
-  // Não redireciona se já está na página de autenticação
-  if (window.location.pathname.includes('auth.html')) {
+  const token = localStorage.getItem('token');
+  const user = localStorage.getItem('user');
+  const isAuthPage = window.location.pathname.includes('auth.html');
+
+  if (isAuthPage) {
+    const isResettingPassword = new URLSearchParams(window.location.search).has('reset_token') || currentResetToken;
+    if (token && user && !isResettingPassword) {
+      window.location.replace('places.html');
+    }
     return;
   }
 
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
-
   if (!token || !user) {
-    window.location.href = 'auth.html';
+    window.location.replace('auth.html');
     return;
   }
 
@@ -1038,14 +1042,14 @@ function renderPlaces() {
   let sectionsToShow = [];
   
   if (currentFilter === 'all') {
-    if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', count: pending.length, places: pending });
-    if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', count: visited.length, places: visited });
+    if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', places: pending });
+    if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', places: visited });
   } else if (currentFilter === 'pending') {
-    if (pending.length > 0) sectionsToShow.push({ title: 'Para visitar', count: pending.length, places: pending });
+    if (pending.length > 0) sectionsToShow.push({ title: '', places: pending });
   } else if (currentFilter === 'visited') {
-    if (visited.length > 0) sectionsToShow.push({ title: 'Já visitamos', count: visited.length, places: visited });
+    if (visited.length > 0) sectionsToShow.push({ title: '', places: visited });
   } else if (currentFilter === 'favorites') {
-    if (favorites.length > 0) sectionsToShow.push({ title: 'Favoritos', count: favorites.length, places: favorites });
+    if (favorites.length > 0) sectionsToShow.push({ title: '', places: favorites });
   }
 
   if (!sectionsToShow.length) {
@@ -1065,7 +1069,7 @@ function renderPlaces() {
       
       return `
         <div class="places-section">
-          <header class="places-section-header">${section.title} (${section.count})</header>
+          ${section.title ? `<header class="places-section-header">${section.title}</header>` : ''}
           ${cardsHtml}
         </div>
       `;
