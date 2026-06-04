@@ -5,6 +5,10 @@ databases:
     ipAllowList: []
 
 envVarGroups:
+  - name: vamoali-runtime
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
   - name: vamoali-email-payload
     envVars:
       - key: EMAIL_PAYLOAD_ENCRYPTION_KEY
@@ -19,6 +23,7 @@ services:
     startCommand: gunicorn --bind 0.0.0.0:$PORT --access-logfile=- app:app
     healthCheckPath: /health
     envVars:
+      - fromGroup: vamoali-runtime
       - fromGroup: vamoali-email-payload
       - key: DATABASE_URL
         fromDatabase:
@@ -37,6 +42,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python -m workers.email_worker
     envVars:
+      - fromGroup: vamoali-runtime
       - fromGroup: vamoali-email-payload
       - key: DATABASE_URL
         fromDatabase:
@@ -62,6 +68,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python -m workers.schedule_unvisited_reminders
     envVars:
+      - fromGroup: vamoali-runtime
       - fromGroup: vamoali-email-payload
       - key: DATABASE_URL
         fromDatabase:
@@ -75,6 +82,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python -m workers.sync_sheets_report
     envVars:
+      - fromGroup: vamoali-runtime
       - key: DATABASE_URL
         fromDatabase:
           name: vamoali-postgres
@@ -91,6 +99,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python -m workers.backup_database
     envVars:
+      - fromGroup: vamoali-runtime
       - key: DATABASE_URL
         fromDatabase:
           name: vamoali-postgres

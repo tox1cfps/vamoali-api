@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 import config.settings as settings
+from database import _normalized_database_url
 
 
 def test_validate_settings_accepts_test_environment():
@@ -40,3 +41,8 @@ def test_validate_settings_requires_backup_key_when_email_backup_is_enabled(monk
     monkeypatch.setattr(settings, "BACKUP_ENCRYPTION_KEY", None)
     with pytest.raises(RuntimeError, match="BACKUP_ENCRYPTION_KEY"):
         settings.validate_settings()
+
+
+def test_database_url_must_be_configured():
+    with pytest.raises(RuntimeError, match="DATABASE_URL"):
+        _normalized_database_url(None)

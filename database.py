@@ -7,6 +7,8 @@ from config.settings import DATABASE_URL
 
 
 def _normalized_database_url(url):
+    if not url:
+        raise RuntimeError("DATABASE_URL nao configurada")
     if url and url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
     if url and url.startswith("postgresql://"):
