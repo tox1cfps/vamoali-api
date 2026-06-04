@@ -7,6 +7,20 @@ os.environ["JWT_SECRET"] = "test-only-secret-with-at-least-32-characters"
 os.environ["FERNET_KEY"] = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 os.environ["GOOGLE_CREDENTIALS_JSON"] = '{"type": "service_account"}'
 os.environ["ENABLE_PASSWORD_RESET"] = "false"
+os.environ["DATABASE_URL"] = "sqlite:///test-vamoali.db"
+
+
+@pytest.fixture(autouse=True)
+def reset_database_between_tests():
+    from database import engine
+    from models import Base
+
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+
+    yield
+
+    Base.metadata.drop_all(engine)
 
 
 @pytest.fixture(autouse=True)

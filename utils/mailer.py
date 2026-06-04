@@ -22,20 +22,29 @@ def build_password_reset_url(token):
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
-def send_password_reset_email(recipient, token):
-    reset_url = build_password_reset_url(token)
+def send_email(recipient, subject, body, attachment=None):
     message = EmailMessage()
-    message["Subject"] = "Redefinicao de senha - VamoAli"
+    message["Subject"] = subject
     message["From"] = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
     message["To"] = recipient
-    message.set_content(
-        "Recebemos uma solicitacao para redefinir sua senha no VamoAli.\n\n"
-        f"Use este link nos proximos minutos:\n{reset_url}\n\n"
-        "Se voce nao solicitou a troca, ignore este email."
-    )
+    message.set_content(body)
+    if attachment:
+        filename, content = attachment
+        message.add_attachment(content, maintype="application", subtype="octet-stream", filename=filename)
 
     with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
         if SMTP_USE_TLS:
             smtp.starttls(context=ssl.create_default_context())
         smtp.login(SMTP_USER, SMTP_PASSWORD)
         smtp.send_message(message)
+
+
+def send_password_reset_email(recipient, token):
+    reset_url = build_password_reset_url(token)
+    send_email(
+        recipient,
+        "Redefinicao de senha - VamoAli",
+        "Recebemos uma solicitacao para redefinir sua senha no VamoAli.\n\n"
+        f"Use este link nos proximos minutos:\n{reset_url}\n\n"
+        "Se voce nao solicitou a troca, ignore este email.",
+    )

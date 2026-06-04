@@ -1,63 +1,15 @@
-from unittest.mock import Mock
-
 from repositories.place_repository import PlaceRepository
+from repositories.user_repository import UserRepository
 
 
-def build_repo(monkeypatch, rows=None):
-    sheet = Mock()
-    sheet.get_all_records.return_value = rows or []
-    monkeypatch.setattr("repositories.place_repository.get_worksheet", lambda name: sheet)
-    return PlaceRepository(), sheet
+def test_place_repository_crud():
+    user = UserRepository().create_user("Ana", "ana@example.com", "hash")
+    repo = PlaceRepository()
+    place = repo.create_place(user["id"], "Bistro", "https://maps.google.com/example", "Restaurante")
 
-
-def test_find_methods_filter_rows(monkeypatch):
-    rows = [{"id": "place-1", "user_id": "user-1"}, {"id": "place-2", "user_id": "user-2"}]
-    repo, _ = build_repo(monkeypatch, rows)
-
-    assert repo.find_by_id("place-1") == rows[0]
-    assert repo.find_by_id("missing") is None
-    assert repo.find_all_by_user("user-2") == [rows[1]]
-
-
-def test_find_all_by_users(monkeypatch):
-    rows = [
-        {"id": "place-1", "user_id": "user-1"},
-        {"id": "place-2", "user_id": "user-2"},
-        {"id": "place-3", "user_id": "user-3"},
-    ]
-    repo, _ = build_repo(monkeypatch, rows)
-
-    assert repo.find_all_by_users(["user-1", "user-2"]) == rows[:2]
-
-
-def test_create_place_appends_raw_row(monkeypatch):
-    repo, sheet = build_repo(monkeypatch)
-
-    created = repo.create_place("user-1", "Bistro", "https://maps.google.com/example", "Restaurante")
-
-    assert created["user_id"] == "user-1"
-    sheet.append_row.assert_called_once()
-    assert sheet.append_row.call_args.kwargs == {"value_input_option": "RAW"}
-
-
-def test_delete_place_removes_existing_row(monkeypatch):
-    repo, sheet = build_repo(monkeypatch, [{"id": "place-1"}])
-
-    assert repo.delete_place("place-1") is True
-    sheet.delete_rows.assert_called_once_with(2)
+    assert repo.find_by_id(place["id"])["name"] == "Bistro"
+    assert repo.find_all_by_user(user["id"])[0]["id"] == place["id"]
+    assert repo.find_all_by_users([user["id"]])[0]["id"] == place["id"]
+    assert repo.update_place(place["id"], {"visited": True})["visited"] is True
+    assert repo.delete_place(place["id"]) is True
     assert repo.delete_place("missing") is False
-
-
-def test_update_place_writes_raw_row_without_mutating_input(monkeypatch):
-    rows = [{"id": "place-1", "user_id": "user-1", "visited": False}]
-    repo, sheet = build_repo(monkeypatch, rows)
-    fields = {"visited": True}
-
-    updated = repo.update_place("place-1", fields)
-
-    assert updated["visited"] is True
-    assert "updated_at" not in fields
-    assert sheet.update.call_args.args[1] == "A2"
-    assert sheet.update.call_args.kwargs == {"raw": True}
-    sheet.get_all_records.assert_called_once()
-    assert repo.update_place("missing", fields) is None

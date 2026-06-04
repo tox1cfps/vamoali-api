@@ -1,8 +1,8 @@
 # VamoAli API
 
 API Flask para organizar lugares que um casal deseja conhecer. O frontend estatico e servido pelo proprio Flask e usa
-a mesma origem da API. A persistencia em Google Sheets e uma escolha demonstrativa adequada ao portfolio, nao a uma
-aplicacao com volume ou concorrencia elevados.
+a mesma origem da API. PostgreSQL e a fonte principal de dados; Google Sheets recebe somente um relatorio diario
+sanitizado para visualizacao e exportacao.
 
 ## Arquitetura
 
@@ -10,12 +10,13 @@ O backend segue o fluxo `Controller -> Service -> Repository`:
 
 - `controllers/`: rotas HTTP e conversao de erros em respostas da API.
 - `services/`: autenticacao, autorizacao por proprietario e regras de lugares.
-- `repositories/`: leitura e escrita das abas `users` e `places` no Google Sheets.
+- `repositories/`: persistencia PostgreSQL via SQLAlchemy.
+- `workers/`: fila de emails, lembretes, relatorio Sheets e backup CSV.
 - `middleware/`: validacao do JWT.
 - `utils/`: cliente Sheets, criptografia Fernet e validacao de entrada.
 
-Nome de usuario e email sao criptografados com Fernet antes de serem persistidos. Senhas usam bcrypt. A recuperacao de
-senha envia por Brevo SMTP um link com token aleatorio de uso unico; somente o hash do token fica armazenado.
+Senhas usam bcrypt. A recuperacao de senha envia por Brevo SMTP um link com token aleatorio de uso unico. O hash fica
+na tabela de tokens; o token bruto existe somente no payload criptografado da fila ate a entrega.
 
 ## Executando localmente
 
@@ -28,14 +29,18 @@ python -m pip install --upgrade pip setuptools
 pip install -r requirements-dev.txt
 ```
 
-Crie um `.env` local a partir de `.env.example`. Nunca versione `.env` ou `credentials.json`. Para desenvolvimento,
-use `GOOGLE_APPLICATION_CREDENTIALS` apontando para um arquivo local fora do repositorio ou defina
-`GOOGLE_CREDENTIALS_JSON`. Gere `FERNET_KEY` com `Fernet.generate_key()` e use um `JWT_SECRET` aleatorio com pelo menos
-32 caracteres. Como a planilha e aberta pelo nome configurado em `SHEET_NAME`, a integracao solicita acesso de escrita
-ao Sheets e leitura do Drive para localizar esse arquivo.
+Crie um `.env` local a partir de `.env.example`. Nunca versione `.env` ou `credentials.json`. Configure `DATABASE_URL`
+e use um `JWT_SECRET` aleatorio com pelo menos 32 caracteres. As credenciais Google e `SHEET_NAME` sao necessarias
+somente para importar os dados antigos; `REPORT_SHEET_NAME` habilita o relatorio diario sanitizado.
 
 ```bash
 flask --app app run
+```
+
+Antes de iniciar, aplique o schema:
+
+```bash
+alembic upgrade head
 ```
 
 Abra `http://localhost:5000`. Para ativar recuperacao de senha, configure as variaveis SMTP da Brevo e defina
@@ -56,12 +61,24 @@ memoria apenas para desenvolvimento/testes. Para producao, cadastre no provedor:
 ```bash
 REDIS_URL=rediss://default:SENHA@HOST:PORT
 LOGIN_CACHE_TTL_SECONDS=900
-SHEETS_CACHE_TTL_SECONDS=15
 ```
 
-O Redis acelera a busca do usuario no login e reutiliza por alguns segundos as leituras completas das abas do Google
-Sheets. Escritas invalidam imediatamente a aba correspondente. A senha continua sendo validada com bcrypt a cada
-tentativa.
+O Redis acelera a busca do usuario no login. A senha continua sendo validada com bcrypt a cada tentativa.
+
+## Workers e migracao
+
+```bash
+python -m workers.email_worker
+python -m workers.schedule_unvisited_reminders
+python -m workers.sync_sheets_report
+python -m workers.backup_database
+python -m scripts.import_sheets_to_postgres
+```
+
+O importador e idempotente e preserva IDs, hashes de senha, lugares, grupos e convites existentes. Execute primeiro em
+um banco de homologacao e valide as contagens antes da troca final. O backup completo gera CSVs compactados, criptografa
+com `BACKUP_ENCRYPTION_KEY` e os envia para `BACKUP_EMAIL`; o relatorio Sheets nao inclui emails, hashes, tokens ou IDs
+de usuarios.
 
 ## Testes
 
@@ -107,7 +124,5 @@ criacao do ambiente.
 
 ## Limitacoes Conhecidas
 
-- Google Sheets nao oferece transacoes adequadas para alta concorrencia; PostgreSQL e a evolucao natural.
 - Rate limiting com Redis, logs estruturados e revogacao de JWT estao planejados para uso alem do portfolio.
-- Tokens de reset ficam em memoria; use Redis ou banco antes de executar mais de uma instancia da API.
 - O frontend ainda armazena o JWT em `localStorage`; cookies seguros com protecao CSRF sao uma evolucao futura.

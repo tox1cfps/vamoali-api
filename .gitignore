@@ -32,3 +32,5 @@ Thumbs.db
 # Runtime logs
 *.log
 performance-results*.csv
+backups/
+test-vamoali.db

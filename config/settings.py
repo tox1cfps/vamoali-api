@@ -10,9 +10,11 @@ load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET")
 SHEET_NAME = os.getenv("SHEET_NAME")
 FERNET_KEY = os.getenv("FERNET_KEY")
+EMAIL_PAYLOAD_ENCRYPTION_KEY = os.getenv("EMAIL_PAYLOAD_ENCRYPTION_KEY") or FERNET_KEY
 GOOGLE_CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 REDIS_URL = os.getenv("REDIS_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 ENABLE_PASSWORD_RESET = os.getenv("ENABLE_PASSWORD_RESET", "false").casefold() == "true"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "2"))
@@ -30,6 +32,13 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL")
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "VamoAli")
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").casefold() == "true"
+BACKUP_EMAIL = os.getenv("BACKUP_EMAIL")
+BACKUP_DIR = os.getenv("BACKUP_DIR", "backups")
+BACKUP_ENCRYPTION_KEY = os.getenv("BACKUP_ENCRYPTION_KEY")
+EMAIL_WORKER_POLL_SECONDS = int(os.getenv("EMAIL_WORKER_POLL_SECONDS", "5"))
+EMAIL_MAX_ATTEMPTS = int(os.getenv("EMAIL_MAX_ATTEMPTS", "5"))
+UNVISITED_REMINDER_DAYS = int(os.getenv("UNVISITED_REMINDER_DAYS", "3"))
+REPORT_SHEET_NAME = os.getenv("REPORT_SHEET_NAME")
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -49,14 +58,11 @@ def validate_settings():
         name
         for name, value in {
             "JWT_SECRET": JWT_SECRET,
-            "SHEET_NAME": SHEET_NAME,
-            "FERNET_KEY": FERNET_KEY,
+            "DATABASE_URL": DATABASE_URL,
+            "EMAIL_PAYLOAD_ENCRYPTION_KEY": EMAIL_PAYLOAD_ENCRYPTION_KEY,
         }.items()
         if not value
     ]
-
-    if not GOOGLE_CREDENTIALS_JSON and not _credentials_file().is_file():
-        missing.append("GOOGLE_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS")
 
     if GOOGLE_CREDENTIALS_JSON:
         try:
@@ -64,18 +70,11 @@ def validate_settings():
         except json.JSONDecodeError as exc:
             raise RuntimeError("GOOGLE_CREDENTIALS_JSON deve conter um JSON valido") from exc
 
-    if ENABLE_PASSWORD_RESET:
-        missing.extend(
-            name
-            for name, value in {
-                "SMTP_HOST": SMTP_HOST,
-                "SMTP_USER": SMTP_USER,
-                "SMTP_PASSWORD": SMTP_PASSWORD,
-                "SMTP_FROM_EMAIL": SMTP_FROM_EMAIL,
-                "PASSWORD_RESET_URL": PASSWORD_RESET_URL,
-            }.items()
-            if not value
-        )
+    if REPORT_SHEET_NAME and not GOOGLE_CREDENTIALS_JSON and not _credentials_file().is_file():
+        missing.append("GOOGLE_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS")
+
+    if BACKUP_EMAIL and not BACKUP_ENCRYPTION_KEY:
+        missing.append("BACKUP_ENCRYPTION_KEY")
 
     if missing:
         raise RuntimeError(f"Variaveis de ambiente ausentes: {', '.join(missing)}")
@@ -83,7 +82,19 @@ def validate_settings():
     if len(JWT_SECRET) < 32:
         raise RuntimeError("JWT_SECRET deve possuir pelo menos 32 caracteres")
 
+    if FERNET_KEY:
+        try:
+            Fernet(FERNET_KEY.encode())
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("FERNET_KEY possui formato invalido") from exc
+
+    if BACKUP_ENCRYPTION_KEY:
+        try:
+            Fernet(BACKUP_ENCRYPTION_KEY.encode())
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("BACKUP_ENCRYPTION_KEY possui formato invalido") from exc
+
     try:
-        Fernet(FERNET_KEY.encode())
+        Fernet(EMAIL_PAYLOAD_ENCRYPTION_KEY.encode())
     except (TypeError, ValueError) as exc:
-        raise RuntimeError("FERNET_KEY possui formato invalido") from exc
+        raise RuntimeError("EMAIL_PAYLOAD_ENCRYPTION_KEY possui formato invalido") from exc

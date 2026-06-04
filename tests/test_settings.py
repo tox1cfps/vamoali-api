@@ -16,6 +16,7 @@ def test_validate_settings_rejects_short_jwt_secret(monkeypatch):
 
 
 def test_validate_settings_requires_google_credentials(monkeypatch):
+    monkeypatch.setattr(settings, "REPORT_SHEET_NAME", "report")
     monkeypatch.setattr(settings, "GOOGLE_CREDENTIALS_JSON", None)
     monkeypatch.setattr(settings, "_credentials_file", Mock(return_value=Mock(is_file=lambda: False)))
     with pytest.raises(RuntimeError, match="GOOGLE"):
@@ -34,8 +35,8 @@ def test_validate_settings_rejects_invalid_google_credentials_json(monkeypatch):
         settings.validate_settings()
 
 
-def test_validate_settings_requires_smtp_when_password_reset_is_enabled(monkeypatch):
-    monkeypatch.setattr(settings, "ENABLE_PASSWORD_RESET", True)
-    monkeypatch.setattr(settings, "SMTP_HOST", None)
-    with pytest.raises(RuntimeError, match="SMTP_HOST"):
+def test_validate_settings_requires_backup_key_when_email_backup_is_enabled(monkeypatch):
+    monkeypatch.setattr(settings, "BACKUP_EMAIL", "backup@example.com")
+    monkeypatch.setattr(settings, "BACKUP_ENCRYPTION_KEY", None)
+    with pytest.raises(RuntimeError, match="BACKUP_ENCRYPTION_KEY"):
         settings.validate_settings()

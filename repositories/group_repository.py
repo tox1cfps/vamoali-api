@@ -1,30 +1,19 @@
-import uuid
-from datetime import datetime, timezone
-
-from config.settings import GROUPS_SHEET
-from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
-from utils.sheets_client import get_worksheet
+from database import session_scope
+from models import Group
+from repositories.base import model_to_dict
 
 
 class GroupRepository:
-    def __init__(self):
-        self.sheet = get_worksheet(GROUPS_SHEET)
-
-    def _get_all_rows(self):
-        return get_sheet_records(GROUPS_SHEET, self.sheet)
+    COLUMNS = ["id", "created_by", "created_at"]
 
     def find_by_id(self, group_id):
-        for row in self._get_all_rows():
-            if row["id"] == group_id:
-                return row
-
-        return None
+        with session_scope() as session:
+            group = session.get(Group, group_id)
+            return model_to_dict(group, self.COLUMNS) if group else None
 
     def create_group(self, created_by):
-        group_id = str(uuid.uuid4())
-        created_at = datetime.now(timezone.utc).isoformat()
-
-        self.sheet.append_row([group_id, created_by, created_at], value_input_option="RAW")
-        invalidate_sheet_records(GROUPS_SHEET)
-
-        return {"id": group_id, "created_by": created_by, "created_at": created_at}
+        with session_scope() as session:
+            group = Group(created_by=created_by)
+            session.add(group)
+            session.flush()
+            return model_to_dict(group, self.COLUMNS)

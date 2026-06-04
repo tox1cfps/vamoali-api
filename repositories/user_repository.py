@@ -1,85 +1,47 @@
-import uuid
+from sqlalchemy import select
 
-from config.settings import USERS_SHEET
-from utils.encryption import decrypt, encrypt
-from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
-from utils.sheets_client import get_worksheet
-
-
-def _maybe_decrypt(value):
-    if value in (None, ""):
-        return value
-
-    try:
-        return decrypt(value)
-    except Exception:
-        return value
+from database import session_scope
+from models import User
+from repositories.base import model_to_dict
 
 
 class UserRepository:
-    def __init__(self):
-        self.sheet = get_worksheet(USERS_SHEET)
-
-    def _get_all_rows(self):
-        return get_sheet_records(USERS_SHEET, self.sheet)
+    COLUMNS = [
+        "id",
+        "username",
+        "email",
+        "password_hash",
+        "created_at",
+        "last_unvisited_reminder_at",
+        "unvisited_reminders_enabled",
+    ]
 
     def find_by_email(self, email):
-        rows = self._get_all_rows()
-
-        for row in rows:
-            decrypted_email = _maybe_decrypt(row.get("email"))
-
-            if decrypted_email == email:
-                return {
-                    **row,
-                    "email": decrypted_email,
-                    "username": _maybe_decrypt(row.get("username")),
-                }
-
-        return None
+        with session_scope() as session:
+            user = session.scalar(select(User).where(User.email == email))
+            return model_to_dict(user, self.COLUMNS) if user else None
 
     def find_by_id(self, id):
-        rows = self._get_all_rows()
-
-        for row in rows:
-            if row["id"] == id:
-                return self._decrypt_user(row)
-
-        return None
+        with session_scope() as session:
+            user = session.get(User, id)
+            return model_to_dict(user, self.COLUMNS) if user else None
 
     def find_by_ids(self, ids):
-        requested_ids = set(ids)
-
-        return {row["id"]: self._decrypt_user(row) for row in self._get_all_rows() if row["id"] in requested_ids}
-
-    @staticmethod
-    def _decrypt_user(row):
-        return {
-            **row,
-            "email": _maybe_decrypt(row.get("email")),
-            "username": _maybe_decrypt(row.get("username")),
-        }
+        with session_scope() as session:
+            users = session.scalars(select(User).where(User.id.in_(set(ids)))).all()
+            return {user.id: model_to_dict(user, self.COLUMNS) for user in users}
 
     def create_user(self, username, email, password_hash):
-        id = str(uuid.uuid4())
-        self.sheet.append_row(
-            [id, encrypt(username), encrypt(email), password_hash],
-            value_input_option="RAW",
-        )
-        invalidate_sheet_records(USERS_SHEET)
-
-        return {"id": id, "username": username}
+        with session_scope() as session:
+            user = User(username=username, email=email, password_hash=password_hash)
+            session.add(user)
+            session.flush()
+            return {"id": user.id, "username": user.username}
 
     def update_password(self, email, new_password_hash):
-        rows = self._get_all_rows()
-
-        for index, row in enumerate(rows):
-            decrypted_email = _maybe_decrypt(row.get("email"))
-
-            if decrypted_email == email:
-                sheet_row = index + 2
-                self.sheet.update_cell(sheet_row, 4, new_password_hash)
-                invalidate_sheet_records(USERS_SHEET)
-                return True
-
-        return False
+        with session_scope() as session:
+            user = session.scalar(select(User).where(User.email == email))
+            if user is None:
+                return False
+            user.password_hash = new_password_hash
+            return True

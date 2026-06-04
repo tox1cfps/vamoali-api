@@ -24,7 +24,7 @@ def test_get_spreadsheet_uses_json_credentials(monkeypatch):
     assert factory.call_args.args[0] == {"type": "service_account"}
     assert factory.call_args.kwargs["scopes"] == [
         "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive",
     ]
 
 
