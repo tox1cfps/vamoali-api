@@ -42,13 +42,22 @@ class UserRepository:
 
         for row in rows:
             if row["id"] == id:
-                return {
-                    **row,
-                    "email": _maybe_decrypt(row.get("email")),
-                    "username": _maybe_decrypt(row.get("username")),
-                }
+                return self._decrypt_user(row)
 
         return None
+
+    def find_by_ids(self, ids):
+        requested_ids = set(ids)
+
+        return {row["id"]: self._decrypt_user(row) for row in self._get_all_rows() if row["id"] in requested_ids}
+
+    @staticmethod
+    def _decrypt_user(row):
+        return {
+            **row,
+            "email": _maybe_decrypt(row.get("email")),
+            "username": _maybe_decrypt(row.get("username")),
+        }
 
     def create_user(self, username, email, password_hash):
         id = str(uuid.uuid4())

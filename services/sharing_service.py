@@ -129,11 +129,12 @@ class SharingService:
             raise LookupError("Grupo nao encontrado")
 
         memberships = self.member_repo.find_active_by_group(group["id"])
+        users_by_id = self.user_repo.find_by_ids(group_membership["user_id"] for group_membership in memberships)
         members = []
 
         for group_membership in memberships:
             member_user_id = group_membership["user_id"]
-            user = self.user_repo.find_by_id(member_user_id)
+            user = users_by_id.get(member_user_id)
             if user is None:
                 raise LookupError("Usuario do grupo nao encontrado")
 

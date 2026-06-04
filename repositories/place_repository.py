@@ -91,15 +91,18 @@ class PlaceRepository:
         return True
 
     def update_place(self, place_id, fields):
-        row = self._find_row_index(place_id)
+        state = None
+        row = None
+        for index, candidate in enumerate(self._get_all_rows()):
+            if candidate["id"] == place_id:
+                state = candidate
+                row = index + 2
+                break
 
-        if row is None:
+        if state is None:
             return None
 
-        state = self.find_by_id(place_id)
-
         fields = {**fields, "updated_at": datetime.now(timezone.utc).isoformat()}
-
         updated = {**state, **fields}
 
         new_row = [str(updated.get(col, "")) for col in self.COLUMNS]

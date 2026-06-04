@@ -27,6 +27,21 @@ def test_find_by_email_and_id_decrypt_public_fields(monkeypatch):
     assert repo.find_by_id("missing") is None
 
 
+def test_find_by_ids_reads_users_once(monkeypatch):
+    rows = [
+        {"id": "user-1", "email": "encrypted:ana@example.com", "username": "encrypted:Ana"},
+        {"id": "user-2", "email": "encrypted:bia@example.com", "username": "encrypted:Bia"},
+        {"id": "user-3", "email": "encrypted:caio@example.com", "username": "encrypted:Caio"},
+    ]
+    repo, sheet = build_repo(monkeypatch, rows)
+
+    users = repo.find_by_ids(["user-1", "user-2"])
+
+    assert set(users) == {"user-1", "user-2"}
+    assert users["user-2"]["username"] == "Bia"
+    sheet.get_all_records.assert_called_once()
+
+
 def test_create_user_appends_raw_encrypted_row(monkeypatch):
     repo, sheet = build_repo(monkeypatch)
 

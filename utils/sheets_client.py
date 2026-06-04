@@ -1,4 +1,5 @@
 import json
+from functools import lru_cache
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -11,6 +12,7 @@ SCOPES = [
 ]
 
 
+@lru_cache(maxsize=1)
 def get_spreadsheet():
     if GOOGLE_CREDENTIALS_JSON:
         creds = Credentials.from_service_account_info(
@@ -25,7 +27,13 @@ def get_spreadsheet():
     return client.open(SHEET_NAME)
 
 
+@lru_cache(maxsize=None)
 def get_worksheet(sheet_name):
     sheet = get_spreadsheet().worksheet(sheet_name)
 
     return sheet
+
+
+def clear_sheets_cache():
+    get_worksheet.cache_clear()
+    get_spreadsheet.cache_clear()

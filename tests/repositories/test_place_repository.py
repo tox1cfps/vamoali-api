@@ -59,4 +59,5 @@ def test_update_place_writes_raw_row_without_mutating_input(monkeypatch):
     assert "updated_at" not in fields
     assert sheet.update.call_args.args[1] == "A2"
     assert sheet.update.call_args.kwargs == {"raw": True}
+    sheet.get_all_records.assert_called_once()
     assert repo.update_place("missing", fields) is None

@@ -241,10 +241,10 @@ def test_get_group_returns_public_member_data(service):
         {"user_id": "user-1", "joined_at": "joined-1"},
         {"user_id": "user-2", "joined_at": "joined-2"},
     ]
-    service.user_repo.find_by_id.side_effect = [
-        {"id": "user-1", "username": "Ana", "email": "ana@example.com", "password_hash": "secret"},
-        {"id": "user-2", "username": "Bia", "email": "bia@example.com", "password_hash": "secret"},
-    ]
+    service.user_repo.find_by_ids.return_value = {
+        "user-1": {"id": "user-1", "username": "Ana", "email": "ana@example.com", "password_hash": "secret"},
+        "user-2": {"id": "user-2", "username": "Bia", "email": "bia@example.com", "password_hash": "secret"},
+    }
 
     result = service.get_group("user-1")
 
@@ -267,6 +267,7 @@ def test_get_group_returns_public_member_data(service):
     ]
     assert "email" not in result["members"][0]
     assert "password_hash" not in result["members"][0]
+    service.user_repo.find_by_ids.assert_called_once()
 
 
 def test_get_group_rejects_user_without_group(service):
@@ -283,7 +284,7 @@ def test_get_group_rejects_missing_member_user(service):
         "created_by": "user-1",
     }
     service.member_repo.find_active_by_group.return_value = [{"user_id": "user-1"}]
-    service.user_repo.find_by_id.return_value = None
+    service.user_repo.find_by_ids.return_value = {}
 
     with pytest.raises(LookupError, match="Usuario do grupo"):
         service.get_group("user-1")
@@ -296,7 +297,7 @@ def test_get_group_requires_current_user_in_active_members(service):
         "created_by": "user-2",
     }
     service.member_repo.find_active_by_group.return_value = [{"user_id": "user-2"}]
-    service.user_repo.find_by_id.return_value = {"id": "user-2", "username": "Bia"}
+    service.user_repo.find_by_ids.return_value = {"user-2": {"id": "user-2", "username": "Bia"}}
 
     with pytest.raises(LookupError, match="Participacao"):
         service.get_group("user-1")
