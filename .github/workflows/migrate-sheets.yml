@@ -1,6 +1,10 @@
 name: Migrate Sheets to PostgreSQL
 
 on:
+  workflow_run:
+    workflows: [Deploy]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirmation:
@@ -12,7 +16,7 @@ permissions:
 
 jobs:
   migrate:
-    if: ${{ inputs.confirmation == 'MIGRATE' }}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' && inputs.confirmation == 'MIGRATE' }}
     runs-on: ubuntu-latest
     steps:
       - name: Import Sheets data
