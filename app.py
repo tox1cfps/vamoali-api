@@ -44,9 +44,12 @@ def health():
 
 @app.get("/migration-health")
 def migration_health():
-    from scripts.import_sheets_to_postgres import migration_status
+    try:
+        from scripts.import_sheets_to_postgres import migration_status
 
-    return jsonify({"matches": migration_status()["matches"]}), 200
+        return jsonify({"matches": migration_status()["matches"]}), 200
+    except Exception as exc:
+        return jsonify({"matches": False, "error": type(exc).__name__}), 503
 
 
 @app.get("/config")

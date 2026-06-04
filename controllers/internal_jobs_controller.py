@@ -3,6 +3,8 @@ import hmac
 from flask import Blueprint, jsonify, request
 
 from config.settings import ADMIN_JOB_SECRET, EMAIL_JOB_BATCH_SIZE
+from database import engine
+from models import Base
 from workers.backup_database import run_backup
 from workers.email_worker import process_pending
 from workers.schedule_unvisited_reminders import schedule_reminders
@@ -56,6 +58,7 @@ def daily_maintenance():
 
 @bp.post("/migrate-sheets")
 def migrate_sheets():
+    Base.metadata.create_all(engine)
     return jsonify({"success": True, "imported": import_all(), "status": migration_status()}), 200
 
 

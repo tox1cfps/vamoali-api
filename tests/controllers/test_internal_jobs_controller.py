@@ -41,6 +41,8 @@ def test_daily_maintenance(authorized_client, monkeypatch):
 
 
 def test_migration_and_status(authorized_client, monkeypatch):
+    create_all = Mock()
+    monkeypatch.setattr(controller.Base.metadata, "create_all", create_all)
     monkeypatch.setattr(controller, "import_all", Mock(return_value={"users": 1}))
     monkeypatch.setattr(controller, "migration_status", Mock(return_value={"matches": True}))
 
@@ -49,3 +51,4 @@ def test_migration_and_status(authorized_client, monkeypatch):
 
     assert migrated.get_json()["imported"] == {"users": 1}
     assert status.get_json()["status"] == {"matches": True}
+    create_all.assert_called_once_with(controller.engine)
