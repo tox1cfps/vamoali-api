@@ -1,0 +1,37 @@
+name: Validate Migration Once
+
+on:
+  push:
+    paths:
+      - ".github/validate-migration-now"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sanitized migration status
+        env:
+          APP_URL: ${{ secrets.VAMOALI_APP_URL }}
+          ADMIN_JOB_SECRET: ${{ secrets.ADMIN_JOB_SECRET }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 \
+            --header "X-Admin-Job-Secret: $ADMIN_JOB_SECRET" \
+            "$APP_URL/internal/jobs/migration-status" \
+            > migration-validation.json
+
+      - name: Require matching counts
+        run: |
+          python -c "import json; data=json.load(open('migration-validation.json')); assert data['status']['matches'], data"
+
+      - name: Commit sanitized result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add migration-validation.json
+          git commit -m "Record migration validation"
+          git push
