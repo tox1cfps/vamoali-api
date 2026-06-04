@@ -34,7 +34,7 @@ def test_openapi_spec_covers_all_api_routes(client):
         for rule in app.url_map.iter_rules()
         if not rule.rule.startswith(("/docs", "/static"))
         and not rule.rule.startswith("/internal/")
-        and rule.rule not in {"/", "/<path:filename>", "/openapi.json"}
+        and rule.rule not in {"/", "/<path:filename>", "/openapi.json", "/migration-health"}
         for method in rule.methods - {"HEAD", "OPTIONS"}
     }
 

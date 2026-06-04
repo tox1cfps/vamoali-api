@@ -42,6 +42,13 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 
+@app.get("/migration-health")
+def migration_health():
+    from scripts.import_sheets_to_postgres import migration_status
+
+    return jsonify({"matches": migration_status()["matches"]}), 200
+
+
 @app.get("/config")
 def public_config():
     return jsonify({"enable_password_reset": ENABLE_PASSWORD_RESET}), 200
