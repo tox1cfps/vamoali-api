@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from config.settings import GROUPS_SHEET
+from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
 from utils.sheets_client import get_worksheet
 
 
@@ -10,7 +11,7 @@ class GroupRepository:
         self.sheet = get_worksheet(GROUPS_SHEET)
 
     def _get_all_rows(self):
-        return self.sheet.get_all_records()
+        return get_sheet_records(GROUPS_SHEET, self.sheet)
 
     def find_by_id(self, group_id):
         for row in self._get_all_rows():
@@ -24,5 +25,6 @@ class GroupRepository:
         created_at = datetime.now(timezone.utc).isoformat()
 
         self.sheet.append_row([group_id, created_by, created_at], value_input_option="RAW")
+        invalidate_sheet_records(GROUPS_SHEET)
 
         return {"id": group_id, "created_by": created_by, "created_at": created_at}

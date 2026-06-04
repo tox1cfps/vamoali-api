@@ -31,3 +31,4 @@ Thumbs.db
 
 # Runtime logs
 *.log
+performance-results*.csv

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from config.settings import GROUP_MEMBERS_SHEET
+from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
 from utils.sheets_client import get_worksheet
 
 
@@ -12,7 +13,7 @@ class GroupMemberRepository:
         self.sheet = get_worksheet(GROUP_MEMBERS_SHEET)
 
     def _get_all_rows(self):
-        return self.sheet.get_all_records()
+        return get_sheet_records(GROUP_MEMBERS_SHEET, self.sheet)
 
     @staticmethod
     def _is_active(member):
@@ -23,6 +24,7 @@ class GroupMemberRepository:
         joined_at = datetime.now(timezone.utc).isoformat()
 
         self.sheet.append_row([member_id, group_id, user_id, joined_at, ""], value_input_option="RAW")
+        invalidate_sheet_records(GROUP_MEMBERS_SHEET)
 
         return {"id": member_id, "group_id": group_id, "user_id": user_id, "joined_at": joined_at, "left_at": ""}
 
@@ -44,6 +46,7 @@ class GroupMemberRepository:
                 row_number = index + 2
                 left_at = datetime.now(timezone.utc).isoformat()
                 self.sheet.update_cell(row_number, 5, left_at)
+                invalidate_sheet_records(GROUP_MEMBERS_SHEET)
 
                 return {**member, "left_at": left_at}
 

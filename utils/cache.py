@@ -95,3 +95,4 @@ class RedisCache:
 
 
 login_cache = RedisCache(REDIS_URL) if REDIS_URL else TTLMemoryCache()
+data_cache = RedisCache(REDIS_URL) if REDIS_URL else TTLMemoryCache()

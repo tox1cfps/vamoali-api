@@ -47,9 +47,12 @@ memoria apenas para desenvolvimento/testes. Para producao, cadastre no provedor:
 ```bash
 REDIS_URL=rediss://default:SENHA@HOST:PORT
 LOGIN_CACHE_TTL_SECONDS=900
+SHEETS_CACHE_TTL_SECONDS=15
 ```
 
-O cache acelera a busca do usuario no login, mas a senha continua sendo validada com bcrypt a cada tentativa.
+O Redis acelera a busca do usuario no login e reutiliza por alguns segundos as leituras completas das abas do Google
+Sheets. Escritas invalidam imediatamente a aba correspondente. A senha continua sendo validada com bcrypt a cada
+tentativa.
 
 ## Testes
 
@@ -65,6 +68,12 @@ pip-audit -r requirements.txt
 ```
 
 A configuracao em `pyproject.toml` exige cobertura global minima de 80%.
+
+## Teste de performance
+
+O cenário Locust em `performance/locustfile.py` mede os principais fluxos autenticados de leitura sem modificar dados.
+As instrucoes para executar pela interface web ou em modo headless, incluindo limites automaticos de p95 e erros,
+estao em `performance/README.md`.
 
 ## CI/CD
 

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from config.settings import PLACES_SHEET
+from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
 from utils.sheets_client import get_worksheet
 
 
@@ -26,7 +27,7 @@ class PlaceRepository:
         self.sheet = get_worksheet(PLACES_SHEET)
 
     def _get_all_rows(self):
-        return self.sheet.get_all_records()
+        return get_sheet_records(PLACES_SHEET, self.sheet)
 
     def find_by_id(self, id):
         rows = self._get_all_rows()
@@ -60,6 +61,7 @@ class PlaceRepository:
             [id, user_id, name, maps_url, False, "", now, now, photo_url, category, False, ""],
             value_input_option="RAW",
         )
+        invalidate_sheet_records(PLACES_SHEET)
 
         return {
             "id": id,
@@ -88,6 +90,7 @@ class PlaceRepository:
         if row is None:
             return False
         self.sheet.delete_rows(row)
+        invalidate_sheet_records(PLACES_SHEET)
         return True
 
     def update_place(self, place_id, fields):
@@ -107,5 +110,6 @@ class PlaceRepository:
 
         new_row = [str(updated.get(col, "")) for col in self.COLUMNS]
         self.sheet.update([new_row], f"A{row}", raw=True)
+        invalidate_sheet_records(PLACES_SHEET)
 
         return updated

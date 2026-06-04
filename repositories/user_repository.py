@@ -2,6 +2,7 @@ import uuid
 
 from config.settings import USERS_SHEET
 from utils.encryption import decrypt, encrypt
+from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
 from utils.sheets_client import get_worksheet
 
 
@@ -20,7 +21,7 @@ class UserRepository:
         self.sheet = get_worksheet(USERS_SHEET)
 
     def _get_all_rows(self):
-        return self.sheet.get_all_records()
+        return get_sheet_records(USERS_SHEET, self.sheet)
 
     def find_by_email(self, email):
         rows = self._get_all_rows()
@@ -65,6 +66,7 @@ class UserRepository:
             [id, encrypt(username), encrypt(email), password_hash],
             value_input_option="RAW",
         )
+        invalidate_sheet_records(USERS_SHEET)
 
         return {"id": id, "username": username}
 
@@ -77,6 +79,7 @@ class UserRepository:
             if decrypted_email == email:
                 sheet_row = index + 2
                 self.sheet.update_cell(sheet_row, 4, new_password_hash)
+                invalidate_sheet_records(USERS_SHEET)
                 return True
 
         return False

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from config.settings import GROUP_INVITES_SHEET
+from utils.sheet_records_cache import get_sheet_records, invalidate_sheet_records
 from utils.sheets_client import get_worksheet
 
 
@@ -29,7 +30,7 @@ class GroupInviteRepository:
         self.sheet = get_worksheet(GROUP_INVITES_SHEET)
 
     def _get_all_rows(self):
-        return self.sheet.get_all_records()
+        return get_sheet_records(GROUP_INVITES_SHEET, self.sheet)
 
     def find_by_id(self, invite_id):
         for invite in self._get_all_rows():
@@ -80,6 +81,7 @@ class GroupInviteRepository:
             [invite[column] for column in self.COLUMNS],
             value_input_option="RAW",
         )
+        invalidate_sheet_records(GROUP_INVITES_SHEET)
 
         return invite
 
@@ -101,6 +103,7 @@ class GroupInviteRepository:
                     f"A{row_number}",
                     raw=True,
                 )
+                invalidate_sheet_records(GROUP_INVITES_SHEET)
 
                 return updated
 

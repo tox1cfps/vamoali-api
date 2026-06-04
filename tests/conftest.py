@@ -9,6 +9,20 @@ os.environ["GOOGLE_CREDENTIALS_JSON"] = '{"type": "service_account"}'
 os.environ["ENABLE_PASSWORD_RESET"] = "false"
 
 
+@pytest.fixture(autouse=True)
+def clear_sheet_records_between_tests():
+    from config.settings import GROUP_INVITES_SHEET, GROUP_MEMBERS_SHEET, GROUPS_SHEET, PLACES_SHEET, USERS_SHEET
+    from utils.sheet_records_cache import invalidate_sheet_records
+
+    for sheet_name in (USERS_SHEET, PLACES_SHEET, GROUPS_SHEET, GROUP_MEMBERS_SHEET, GROUP_INVITES_SHEET):
+        invalidate_sheet_records(sheet_name)
+
+    yield
+
+    for sheet_name in (USERS_SHEET, PLACES_SHEET, GROUPS_SHEET, GROUP_MEMBERS_SHEET, GROUP_INVITES_SHEET):
+        invalidate_sheet_records(sheet_name)
+
+
 @pytest.fixture
 def client():
     from app import app
