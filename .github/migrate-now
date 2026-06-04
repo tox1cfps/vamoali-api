@@ -1,1 +1,1 @@
-Execute the one-time Sheets to PostgreSQL migration after schema bootstrap.
+Execute the one-time Sheets to PostgreSQL migration after the schema-bootstrap deploy is live.
