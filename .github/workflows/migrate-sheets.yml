@@ -1,9 +1,6 @@
 name: Migrate Sheets to PostgreSQL
 
 on:
-  push:
-    paths:
-      - ".github/migrate-now"
   workflow_dispatch:
     inputs:
       confirmation:
@@ -15,7 +12,7 @@ permissions:
 
 jobs:
   migrate:
-    if: ${{ github.event_name == 'push' || inputs.confirmation == 'MIGRATE' }}
+    if: ${{ inputs.confirmation == 'MIGRATE' }}
     runs-on: ubuntu-latest
     steps:
       - name: Import Sheets data

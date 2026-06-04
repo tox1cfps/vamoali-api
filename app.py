@@ -42,41 +42,6 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 
-@app.get("/migration-health")
-def migration_health():
-    try:
-        from scripts.import_sheets_to_postgres import migration_status
-
-        return jsonify(migration_status()), 200
-    except Exception as exc:
-        return jsonify({"matches": False, "error": type(exc).__name__}), 503
-
-
-@app.post("/migration-diagnostic")
-def migration_diagnostic():
-    from database import engine
-    from models import Base
-    from scripts.import_sheets_to_postgres import import_all
-
-    try:
-        Base.metadata.create_all(engine)
-        return jsonify({"success": True, "imported": import_all()}), 200
-    except Exception as exc:
-        original = getattr(exc, "orig", None)
-        diagnostic = getattr(original, "diag", None)
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": type(exc).__name__,
-                    "sqlstate": getattr(original, "sqlstate", None),
-                    "constraint": getattr(diagnostic, "constraint_name", None),
-                }
-            ),
-            503,
-        )
-
-
 @app.get("/config")
 def public_config():
     return jsonify({"enable_password_reset": ENABLE_PASSWORD_RESET}), 200
