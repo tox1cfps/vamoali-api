@@ -1,4 +1,8 @@
+import json
+from pathlib import Path
+
 from flask import Flask, jsonify, send_from_directory
+from flask_swagger_ui import get_swaggerui_blueprint
 
 from config.settings import ENABLE_PASSWORD_RESET, validate_settings
 from controllers.auth_controller import bp as auth_bp
@@ -14,6 +18,21 @@ app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
 app.register_blueprint(auth_bp)
 app.register_blueprint(places_bp)
 app.register_blueprint(sharing_bp)
+app.register_blueprint(
+    get_swaggerui_blueprint(
+        "/docs",
+        "/openapi.json",
+        config={
+            "app_name": "VamoAli API",
+            "deepLinking": True,
+            "displayRequestDuration": True,
+            "persistAuthorization": True,
+        },
+    ),
+    url_prefix="/docs",
+)
+
+OPENAPI_SPEC = Path(__file__).with_name("docs") / "openapi.json"
 
 
 @app.get("/health")
@@ -24,6 +43,12 @@ def health():
 @app.get("/config")
 def public_config():
     return jsonify({"enable_password_reset": ENABLE_PASSWORD_RESET}), 200
+
+
+@app.get("/openapi.json")
+def openapi_spec():
+    with OPENAPI_SPEC.open(encoding="utf-8") as spec_file:
+        return jsonify(json.load(spec_file)), 200
 
 
 @app.after_request

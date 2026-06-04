@@ -1,0 +1,638 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "VamoAli API",
+    "version": "1.0.0",
+    "description": "API para organizar lugares e compartilhar listas entre usuarios."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Servidor atual"
+    }
+  ],
+  "tags": [
+    {"name": "Sistema", "description": "Status e configuracao publica"},
+    {"name": "Autenticacao", "description": "Cadastro, login e recuperacao de senha"},
+    {"name": "Lugares", "description": "Gerenciamento da lista de lugares"},
+    {"name": "Compartilhamento", "description": "Grupos, membros e convites"}
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Sistema"],
+        "summary": "Verifica a saude da API",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "API disponivel",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Health"}}}
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "tags": ["Sistema"],
+        "summary": "Retorna configuracoes publicas",
+        "operationId": "getPublicConfig",
+        "responses": {
+          "200": {
+            "description": "Configuracao publica",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PublicConfig"}}}
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["Autenticacao"],
+        "summary": "Cadastra um usuario",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RegisterRequest"}}}
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario cadastrado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"}
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Autenticacao"],
+        "summary": "Autentica um usuario",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/LoginRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario autenticado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"}
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Autenticacao"],
+        "summary": "Solicita ou confirma a redefinicao de senha",
+        "description": "Envie email para solicitar a redefinicao, ou token e new_password para confirmar.",
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {"$ref": "#/components/schemas/ResetPasswordRequest"},
+                  {"$ref": "#/components/schemas/ResetPasswordConfirmation"}
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitacao processada",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SuccessMessage"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "503": {"$ref": "#/components/responses/ServiceUnavailable"}
+        }
+      }
+    },
+    "/places": {
+      "get": {
+        "tags": ["Lugares"],
+        "summary": "Lista lugares visiveis para o usuario",
+        "operationId": "listPlaces",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lista de lugares",
+            "content": {
+              "application/json": {
+                "schema": {"type": "array", "items": {"$ref": "#/components/schemas/VisiblePlace"}}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "post": {
+        "tags": ["Lugares"],
+        "summary": "Adiciona um lugar",
+        "operationId": "createPlace",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreatePlaceRequest"}}}
+        },
+        "responses": {
+          "201": {
+            "description": "Lugar criado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/places/random": {
+      "get": {
+        "tags": ["Lugares"],
+        "summary": "Sorteia um lugar ainda nao visitado",
+        "operationId": "getRandomPlace",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lugar sorteado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/VisiblePlace"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/places/{place_id}": {
+      "parameters": [{"$ref": "#/components/parameters/PlaceId"}],
+      "patch": {
+        "tags": ["Lugares"],
+        "summary": "Atualiza o status de visita de um lugar",
+        "operationId": "updatePlace",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UpdatePlaceRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Lugar atualizado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      },
+      "delete": {
+        "tags": ["Lugares"],
+        "summary": "Remove um lugar",
+        "operationId": "deletePlace",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lugar removido",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SuccessMessage"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/places/{place_id}/visited": {
+      "parameters": [{"$ref": "#/components/parameters/PlaceId"}],
+      "patch": {
+        "tags": ["Lugares"],
+        "summary": "Marca um lugar como visitado",
+        "operationId": "markPlaceVisited",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lugar atualizado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/places/{place_id}/feedback": {
+      "parameters": [{"$ref": "#/components/parameters/PlaceId"}],
+      "patch": {
+        "tags": ["Lugares"],
+        "summary": "Adiciona feedback a um lugar visitado",
+        "operationId": "addPlaceFeedback",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeedbackRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback adicionado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/places/{place_id}/favorite": {
+      "parameters": [{"$ref": "#/components/parameters/PlaceId"}],
+      "patch": {
+        "tags": ["Lugares"],
+        "summary": "Alterna o favorito de um lugar",
+        "operationId": "togglePlaceFavorite",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Lugar atualizado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/places/{place_id}/rating": {
+      "parameters": [{"$ref": "#/components/parameters/PlaceId"}],
+      "patch": {
+        "tags": ["Lugares"],
+        "summary": "Avalia um lugar",
+        "operationId": "ratePlace",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RatingRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Lugar avaliado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Place"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/sharing/group": {
+      "get": {
+        "tags": ["Compartilhamento"],
+        "summary": "Consulta o grupo do usuario",
+        "operationId": "getSharingGroup",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Grupo do usuario",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Group"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/sharing/group/members/{member_user_id}": {
+      "delete": {
+        "tags": ["Compartilhamento"],
+        "summary": "Remove um membro ou sai do grupo",
+        "operationId": "removeGroupMember",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/MemberUserId"}],
+        "responses": {
+          "200": {
+            "description": "Membro removido",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RemoveMemberResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/sharing/invites": {
+      "post": {
+        "tags": ["Compartilhamento"],
+        "summary": "Cria um convite para o grupo",
+        "operationId": "createGroupInvite",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "201": {
+            "description": "Convite criado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Invite"}}}
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/sharing/invites/accept": {
+      "post": {
+        "tags": ["Compartilhamento"],
+        "summary": "Aceita um convite",
+        "operationId": "acceptGroupInvite",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AcceptInviteRequest"}}}
+        },
+        "responses": {
+          "200": {
+            "description": "Convite aceito",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AcceptInviteResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    },
+    "/sharing/invites/{invite_id}": {
+      "delete": {
+        "tags": ["Compartilhamento"],
+        "summary": "Revoga um convite",
+        "operationId": "revokeGroupInvite",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/InviteId"}],
+        "responses": {
+          "200": {
+            "description": "Convite revogado",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RevokeInviteResponse"}}}
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"$ref": "#/components/responses/Forbidden"},
+          "404": {"$ref": "#/components/responses/NotFound"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token JWT retornado pelo login ou cadastro."
+      }
+    },
+    "parameters": {
+      "PlaceId": {
+        "name": "place_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "MemberUserId": {
+        "name": "member_user_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "InviteId": {
+        "name": "invite_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Requisicao invalida",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "Unauthorized": {
+        "description": "Token ausente, invalido ou expirado",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "Forbidden": {
+        "description": "Usuario sem permissao",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "NotFound": {
+        "description": "Recurso nao encontrado",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      },
+      "ServiceUnavailable": {
+        "description": "Servico temporariamente indisponivel",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}
+      }
+    },
+    "schemas": {
+      "Health": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {"status": {"type": "string", "example": "ok"}}
+      },
+      "PublicConfig": {
+        "type": "object",
+        "required": ["enable_password_reset"],
+        "properties": {"enable_password_reset": {"type": "boolean"}}
+      },
+      "Error": {
+        "type": "object",
+        "required": ["success", "message"],
+        "properties": {
+          "success": {"type": "boolean", "example": false},
+          "message": {"type": "string"}
+        }
+      },
+      "SuccessMessage": {
+        "type": "object",
+        "required": ["success"],
+        "properties": {
+          "success": {"type": "boolean", "example": true},
+          "message": {"type": "string"}
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": ["id", "username"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "username": {"type": "string", "maxLength": 80}
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": ["user", "token"],
+        "properties": {
+          "user": {"$ref": "#/components/schemas/User"},
+          "token": {"type": "string", "description": "Token JWT"}
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["username", "email", "password"],
+        "properties": {
+          "username": {"type": "string", "maxLength": 80, "example": "Ana"},
+          "email": {"type": "string", "format": "email", "example": "ana@example.com"},
+          "password": {"type": "string", "format": "password", "minLength": 8, "maxLength": 72, "example": "Strong1!"}
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {"type": "string", "format": "email", "example": "ana@example.com"},
+          "password": {"type": "string", "format": "password", "example": "Strong1!"}
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": ["email"],
+        "properties": {"email": {"type": "string", "format": "email"}}
+      },
+      "ResetPasswordConfirmation": {
+        "type": "object",
+        "required": ["token", "new_password"],
+        "properties": {
+          "token": {"type": "string"},
+          "new_password": {"type": "string", "format": "password", "minLength": 8, "maxLength": 72}
+        }
+      },
+      "CreatePlaceRequest": {
+        "type": "object",
+        "required": ["name", "maps_url", "category"],
+        "properties": {
+          "name": {"type": "string", "maxLength": 120, "example": "Bistro"},
+          "maps_url": {"type": "string", "format": "uri", "example": "https://maps.google.com/example"},
+          "category": {"type": "string", "example": "Restaurante"},
+          "photo_url": {"type": "string", "format": "uri", "example": "https://example.com/photo.jpg"}
+        }
+      },
+      "UpdatePlaceRequest": {
+        "type": "object",
+        "required": ["visited"],
+        "additionalProperties": false,
+        "properties": {"visited": {"type": "boolean"}}
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "required": ["feedback"],
+        "properties": {"feedback": {"type": "string", "maxLength": 1000}}
+      },
+      "RatingRequest": {
+        "type": "object",
+        "required": ["rating"],
+        "properties": {"rating": {"type": "integer", "minimum": 1, "maximum": 5}}
+      },
+      "Place": {
+        "type": "object",
+        "required": ["id", "user_id", "name", "maps_url", "visited", "favorited"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "user_id": {"type": "string", "format": "uuid"},
+          "name": {"type": "string"},
+          "maps_url": {"type": "string", "format": "uri"},
+          "visited": {"type": "boolean"},
+          "feedback": {"type": "string"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "updated_at": {"type": "string", "format": "date-time"},
+          "photo_url": {"type": "string", "format": "uri"},
+          "category": {"type": "string"},
+          "favorited": {"type": "boolean"},
+          "rating": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 5}, {"type": "string", "enum": [""]}]}
+        }
+      },
+      "VisiblePlace": {
+        "allOf": [
+          {"$ref": "#/components/schemas/Place"},
+          {
+            "type": "object",
+            "required": ["is_owner", "permissions"],
+            "properties": {
+              "is_owner": {"type": "boolean"},
+              "permissions": {"$ref": "#/components/schemas/PlacePermissions"}
+            }
+          }
+        ]
+      },
+      "PlacePermissions": {
+        "type": "object",
+        "required": ["can_edit", "can_delete"],
+        "properties": {
+          "can_edit": {"type": "boolean"},
+          "can_delete": {"type": "boolean"}
+        }
+      },
+      "GroupMember": {
+        "type": "object",
+        "required": ["id", "username", "joined_at", "is_current_user", "is_creator"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "username": {"type": "string"},
+          "joined_at": {"type": "string", "format": "date-time"},
+          "is_current_user": {"type": "boolean"},
+          "is_creator": {"type": "boolean"}
+        }
+      },
+      "Group": {
+        "type": "object",
+        "required": ["id", "created_by", "created_at", "members"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "created_by": {"type": "string", "format": "uuid"},
+          "created_at": {"type": "string", "format": "date-time"},
+          "members": {"type": "array", "items": {"$ref": "#/components/schemas/GroupMember"}}
+        }
+      },
+      "Invite": {
+        "type": "object",
+        "required": ["id", "code", "token", "expires_at"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "code": {"type": "string", "example": "VAMO-ABC123"},
+          "token": {"type": "string"},
+          "expires_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "AcceptInviteRequest": {
+        "type": "object",
+        "description": "Informe exatamente um dos campos.",
+        "properties": {
+          "code": {"type": "string", "example": "VAMO-ABC123"},
+          "token": {"type": "string"}
+        }
+      },
+      "GroupMembership": {
+        "type": "object",
+        "required": ["id", "group_id", "user_id", "joined_at", "left_at"],
+        "properties": {
+          "id": {"type": "string", "format": "uuid"},
+          "group_id": {"type": "string", "format": "uuid"},
+          "user_id": {"type": "string", "format": "uuid"},
+          "joined_at": {"type": "string", "format": "date-time"},
+          "left_at": {"type": "string"}
+        }
+      },
+      "AcceptInviteResponse": {
+        "type": "object",
+        "required": ["group_id", "member"],
+        "properties": {
+          "group_id": {"type": "string", "format": "uuid"},
+          "member": {"$ref": "#/components/schemas/GroupMembership"}
+        }
+      },
+      "RemoveMemberResponse": {
+        "type": "object",
+        "required": ["success", "group_id", "removed_user_id"],
+        "properties": {
+          "success": {"type": "boolean", "example": true},
+          "group_id": {"type": "string", "format": "uuid"},
+          "removed_user_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "RevokeInviteResponse": {
+        "type": "object",
+        "required": ["success", "invite_id", "revoked_at"],
+        "properties": {
+          "success": {"type": "boolean", "example": true},
+          "invite_id": {"type": "string", "format": "uuid"},
+          "revoked_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}

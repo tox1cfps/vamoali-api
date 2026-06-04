@@ -9,6 +9,45 @@ def test_config_does_not_expose_secrets(client):
     assert response.get_json() == {"enable_password_reset": False}
 
 
+def test_openapi_spec_documents_api_and_bearer_auth(client):
+    response = client.get("/openapi.json")
+    spec = response.get_json()
+
+    assert response.status_code == 200
+    assert spec["openapi"] == "3.0.3"
+    assert "/places/{place_id}" in spec["paths"]
+    assert spec["components"]["securitySchemes"]["bearerAuth"]["scheme"] == "bearer"
+
+
+def test_openapi_spec_covers_all_api_routes(client):
+    from app import app
+
+    spec = client.get("/openapi.json").get_json()
+    documented_operations = {
+        (path, method.upper())
+        for path, operations in spec["paths"].items()
+        for method in operations
+        if method != "parameters"
+    }
+    api_operations = {
+        (rule.rule.rstrip("/").replace("<", "{").replace(">", "}"), method)
+        for rule in app.url_map.iter_rules()
+        if not rule.rule.startswith(("/docs", "/static"))
+        and rule.rule not in {"/", "/<path:filename>", "/openapi.json"}
+        for method in rule.methods - {"HEAD", "OPTIONS"}
+    }
+
+    assert api_operations <= documented_operations
+
+
+def test_swagger_ui_is_available(client):
+    response = client.get("/docs/")
+
+    assert response.status_code == 200
+    assert b"SwaggerUIBundle" in response.data
+    assert b"/openapi.json" in response.data
+
+
 def test_security_headers_are_added(client):
     response = client.get("/health")
     assert response.headers["X-Content-Type-Options"] == "nosniff"

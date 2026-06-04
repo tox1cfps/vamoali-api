@@ -41,6 +41,15 @@ flask --app app run
 Abra `http://localhost:5000`. Para ativar recuperacao de senha, configure as variaveis SMTP da Brevo e defina
 `ENABLE_PASSWORD_RESET=true`. Em desenvolvimento local use `SMTP_PORT=587`; no Render gratuito use `SMTP_PORT=2525`.
 
+## Documentacao da API
+
+A documentacao interativa Swagger fica disponivel em `http://localhost:5000/docs/`. O contrato OpenAPI 3 usado pela
+interface pode ser consultado diretamente em `http://localhost:5000/openapi.json`.
+
+Para testar rotas protegidas pela interface, autentique-se em `/auth/login`, copie o token retornado e use o botao
+**Authorize** informando somente o token JWT. Os contratos de endpoints, corpos, respostas e schemas compartilhados
+ficam centralizados em `docs/openapi.json`.
+
 O cache de login usa Redis quando `REDIS_URL` esta configurada. Sem essa variavel, a aplicacao usa um cache local em
 memoria apenas para desenvolvimento/testes. Para producao, cadastre no provedor:
 
