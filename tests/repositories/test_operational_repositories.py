@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import datetime, timedelta, timezone
 
 from database import session_scope
 from models import EmailJob
