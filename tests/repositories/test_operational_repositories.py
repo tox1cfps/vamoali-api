@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 
 from database import session_scope
 from models import EmailJob
@@ -36,7 +37,9 @@ def test_email_job_repository_lifecycle(monkeypatch):
 
     assert job_id
     with session_scope() as session:
-        assert "Ana" not in session.get(EmailJob, job_id).payload_json
+        stored_payload = session.get(EmailJob, job_id).payload_json
+        assert stored_payload != json.dumps({"username": "Ana"})
+        assert repo._decrypt_payload(stored_payload) == {"username": "Ana"}
     assert repo.enqueue("welcome", "ana@example.com", {}, "welcome:user-1") is None
     claimed = repo.claim_next()
     assert claimed["payload"] == {"username": "Ana"}
