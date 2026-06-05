@@ -46,6 +46,22 @@ alembic upgrade head
 Abra `http://localhost:5000`. Para ativar recuperacao de senha, configure as variaveis SMTP da Brevo e defina
 `ENABLE_PASSWORD_RESET=true`. Em desenvolvimento local use `SMTP_PORT=587`; no Render gratuito use `SMTP_PORT=2525`.
 
+### Executando com Docker
+
+Com Docker e Docker Compose instalados, copie `.env.example` para `.env` e preencha os secrets reais quando necessario.
+O Compose cria PostgreSQL, Redis, aplica as migrations e sobe a API em `http://localhost:5000`.
+
+```bash
+docker compose up --build
+```
+
+Para executar comandos dentro do container:
+
+```bash
+docker compose run --rm api alembic upgrade head
+docker compose run --rm api python -m workers.email_worker
+```
+
 ## Documentacao da API
 
 A documentacao interativa Swagger fica disponivel em `http://localhost:5000/docs/`. O contrato OpenAPI 3 usado pela
