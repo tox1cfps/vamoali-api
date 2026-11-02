@@ -1781,17 +1781,34 @@ body.dark-mode .place-card--with-photo {
     align-items: start;
     gap: 12px;
     padding: 12px 16px;
+    min-width: 0;
   }
 
   .place-card__body {
     min-width: 0;
   }
 
+  .place-card__meta {
+    gap: 8px;
+  }
+
+  .place-card__maps {
+    white-space: nowrap;
+  }
+
   .place-card__actions {
     grid-column: 1 / -1;
-    justify-content: flex-end;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 6px;
+    min-width: 0;
+  }
+
+  .place-card__actions .action-button--visited {
+    width: auto;
+    min-width: 36px;
+    padding: 0 10px;
+    white-space: nowrap;
   }
 
   .place-card--with-photo {
@@ -1804,6 +1821,7 @@ body.dark-mode .place-card--with-photo {
     align-items: start;
     gap: 12px;
     padding: 12px 16px;
+    min-width: 0;
   }
 
   .place-card--with-photo .place-card__actions {
