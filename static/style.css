@@ -1788,12 +1788,20 @@ body.dark-mode .place-card--with-photo {
   .place-card__emoji {
     width: 44px;
     height: 44px;
-    grid-row: 1 / 3;
   }
 
   .place-card__body {
+    grid-column: 1 / -1;
     min-width: 0;
     gap: 5px;
+  }
+
+  .place-card__name {
+    overflow-wrap: anywhere;
+  }
+
+  .place-card__shared {
+    overflow-wrap: anywhere;
   }
 
   .place-card__meta {
@@ -1802,6 +1810,12 @@ body.dark-mode .place-card--with-photo {
 
   .place-card__maps {
     white-space: nowrap;
+  }
+
+  .place-card__badge--pending {
+    min-width: 76px;
+    justify-content: center;
+    text-align: center;
   }
 
   .place-card__actions {
@@ -1846,7 +1860,11 @@ body.dark-mode .place-card--with-photo {
   }
 
   .place-card--with-photo .place-card__emoji {
-    grid-row: 1 / 3;
+    grid-row: auto;
+  }
+
+  .place-card--with-photo .place-card__body {
+    grid-column: 1 / -1;
   }
 
   .place-card--with-photo .place-card__actions {
